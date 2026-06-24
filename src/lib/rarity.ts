@@ -11,7 +11,7 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   UR: "UR",
 };
 
-export const RARITY_WEIGHTS: Record<Rarity, number> = {
+export const DEFAULT_RARITY_WEIGHTS: Record<Rarity, number> = {
   N: 40,
   R: 30,
   RR: 20,

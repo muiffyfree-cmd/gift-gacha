@@ -1,5 +1,5 @@
 import type { Prize, Rarity } from "@/types/gacha";
-import { DEFAULT_RARITY_EFFECTS } from "@/lib/rarity";
+import { DEFAULT_RARITY_EFFECTS, DEFAULT_RARITY_WEIGHTS } from "@/lib/rarity";
 
 const LAST_RESULT_KEY = "gacha-gift-last-result";
 
@@ -70,6 +70,30 @@ export function saveEffects(effects: RarityEffects): void {
   window.localStorage.setItem(EFFECTS_KEY, JSON.stringify(effects));
 }
 
+const RARITY_WEIGHTS_KEY = "gacha-gift-rarity-weights";
+
+export type RarityWeights = Record<Rarity, number>;
+
+export function loadRarityWeights(): RarityWeights {
+  if (typeof window === "undefined") return DEFAULT_RARITY_WEIGHTS;
+  try {
+    const raw = window.localStorage.getItem(RARITY_WEIGHTS_KEY);
+    if (!raw) return DEFAULT_RARITY_WEIGHTS;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      return { ...DEFAULT_RARITY_WEIGHTS, ...parsed } as RarityWeights;
+    }
+    return DEFAULT_RARITY_WEIGHTS;
+  } catch {
+    return DEFAULT_RARITY_WEIGHTS;
+  }
+}
+
+export function saveRarityWeights(weights: RarityWeights): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(RARITY_WEIGHTS_KEY, JSON.stringify(weights));
+}
+
 const ADMIN_PASSWORD_KEY = "gacha-gift-admin-password";
 
 export function loadAdminPassword(): string {
@@ -118,6 +142,7 @@ export type BackupData = {
   effects: RarityEffects;
   purchaseCounts: PurchaseCount[];
   visitStats: VisitStats;
+  rarityWeights?: RarityWeights;
 };
 
 export function exportAllData(): BackupData {
@@ -125,6 +150,7 @@ export function exportAllData(): BackupData {
     effects: loadEffects(),
     purchaseCounts: loadPurchaseCounts(),
     visitStats: loadVisitStats(),
+    rarityWeights: loadRarityWeights(),
   };
 }
 
@@ -135,5 +161,8 @@ export function importAllData(data: BackupData): void {
   }
   if (data.visitStats && typeof data.visitStats === "object") {
     window.localStorage.setItem(VISITS_KEY, JSON.stringify(data.visitStats));
+  }
+  if (data.rarityWeights && typeof data.rarityWeights === "object") {
+    saveRarityWeights(data.rarityWeights);
   }
 }

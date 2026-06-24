@@ -8,12 +8,15 @@ import {
   loadAdminPassword,
   loadEffects,
   loadPurchaseCounts,
+  loadRarityWeights,
   loadVisitStats,
   saveAdminPassword,
   saveEffects,
+  saveRarityWeights,
   type BackupData,
   type PurchaseCount,
   type RarityEffects,
+  type RarityWeights,
   type VisitStats,
 } from "@/lib/storage";
 import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
@@ -45,6 +48,7 @@ export default function AdminApp() {
   const [visitStats, setVisitStats] = useState<VisitStats>({});
   const [backupMessage, setBackupMessage] = useState("");
   const [prizesError, setPrizesError] = useState("");
+  const [rarityWeights, setRarityWeights] = useState<RarityWeights | null>(null);
 
   useEffect(() => {
     fetchItems()
@@ -54,7 +58,17 @@ export default function AdminApp() {
     setEffects(loadEffects());
     setAdminPassword(loadAdminPassword());
     setVisitStats(loadVisitStats());
+    setRarityWeights(loadRarityWeights());
   }, []);
+
+  function handleWeightChange(rarity: Rarity, value: number) {
+    setRarityWeights((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, [rarity]: value };
+      saveRarityWeights(next);
+      return next;
+    });
+  }
 
   function handleUnlock() {
     if (passwordInput === adminPassword) {
@@ -550,6 +564,39 @@ export default function AdminApp() {
                 </li>
               ))}
           </ol>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4">
+        <h2 className="mb-3 font-semibold text-gray-700">出現率の設定</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          各レアリティの抽選の重みを設定します。数値の比率で出現率が決まります（合計が100でなくても自動的に割合計算されます）。
+        </p>
+        {rarityWeights && (
+          <div className="flex flex-col gap-2">
+            {RARITY_OPTIONS.map((rarity) => {
+              const total = RARITY_OPTIONS.reduce((sum, r) => sum + rarityWeights[r], 0);
+              const percent = total > 0 ? (rarityWeights[rarity] / total) * 100 : 0;
+              return (
+                <div key={rarity} className="flex items-center gap-3">
+                  <span
+                    className={`w-14 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-semibold ${RARITY_BADGE_CLASSES[rarity]}`}
+                  >
+                    {RARITY_LABELS[rarity]}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={rarityWeights[rarity]}
+                    onChange={(e) => handleWeightChange(rarity, Number(e.target.value))}
+                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none"
+                  />
+                  <span className="text-xs text-gray-500">{percent.toFixed(2)}%</span>
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
 

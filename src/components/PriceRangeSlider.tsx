@@ -14,11 +14,13 @@ const THUMB_CLASSES =
 export default function PriceRangeSlider({
   min,
   max,
+  step = 1,
   value,
   onChange,
 }: {
   min: number;
   max: number;
+  step?: number;
   value: [number, number];
   onChange: (value: [number, number]) => void;
 }) {
@@ -47,6 +49,7 @@ export default function PriceRangeSlider({
           type="range"
           min={min}
           max={max}
+          step={step}
           value={low}
           onChange={(e) => handleLowChange(Number(e.target.value))}
           className={THUMB_CLASSES}
@@ -55,6 +58,7 @@ export default function PriceRangeSlider({
           type="range"
           min={min}
           max={max}
+          step={step}
           value={high}
           onChange={(e) => handleHighChange(Number(e.target.value))}
           className={THUMB_CLASSES}

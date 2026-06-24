@@ -4,24 +4,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import type { Prize } from "@/types/gacha";
-import { loadEffects, recordVisit, saveLastResult } from "@/lib/storage";
+import { loadEffects, loadRarityWeights, recordVisit, saveLastResult, type RarityWeights } from "@/lib/storage";
 import { fetchItems } from "@/lib/items";
-import { RARITY_LABELS, RARITY_WEIGHTS } from "@/lib/rarity";
+import { RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import IntroBanner from "@/components/IntroBanner";
 
 const SPIN_DURATION_MS = 1200;
-const PRICE_MIN = 500;
-const PRICE_MAX = 30000;
+const PRICE_MIN = 0;
+const PRICE_MAX = 10000;
+const PRICE_STEP = 1000;
 
-function pickWeightedPrize(prizes: Prize[]): Prize {
-  const totalWeight = prizes.reduce(
-    (sum, p) => sum + RARITY_WEIGHTS[p.rarity],
-    0,
-  );
+function pickWeightedPrize(prizes: Prize[], weights: RarityWeights): Prize {
+  const totalWeight = prizes.reduce((sum, p) => sum + weights[p.rarity], 0);
   let roll = Math.random() * totalWeight;
   for (const prize of prizes) {
-    roll -= RARITY_WEIGHTS[prize.rarity];
+    roll -= weights[prize.rarity];
     if (roll <= 0) return prize;
   }
   return prizes[prizes.length - 1];
@@ -39,6 +37,7 @@ export default function GachaApp() {
     PRICE_MIN,
     PRICE_MAX,
   ]);
+  const [rarityWeights, setRarityWeights] = useState<RarityWeights>(loadRarityWeights());
   const autoSpunRef = useRef(false);
 
   useEffect(() => {
@@ -46,6 +45,7 @@ export default function GachaApp() {
       .then(setPrizes)
       .catch(() => setPrizes([]));
     recordVisit();
+    setRarityWeights(loadRarityWeights());
   }, []);
 
   const filteredPrizes = useMemo(() => {
@@ -74,7 +74,7 @@ export default function GachaApp() {
     if (filteredPrizes.length === 0 || isSpinning) return;
     setIsSpinning(true);
     window.setTimeout(() => {
-      const picked = pickWeightedPrize(filteredPrizes);
+      const picked = pickWeightedPrize(filteredPrizes, rarityWeights);
       const videos = loadEffects()[picked.rarity];
       const video =
         videos && videos.length > 0
@@ -130,10 +130,26 @@ export default function GachaApp() {
           <PriceRangeSlider
             min={PRICE_MIN}
             max={PRICE_MAX}
+            step={PRICE_STEP}
             value={priceRange}
             onChange={setPriceRange}
           />
         </section>
+      </div>
+
+      <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+        <ul className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 sm:text-sm">
+          {RARITY_OPTIONS.map((rarity) => {
+            const total = RARITY_OPTIONS.reduce((sum, r) => sum + rarityWeights[r], 0);
+            const percent = total > 0 ? (rarityWeights[rarity] / total) * 100 : 0;
+            return (
+              <li key={rarity} className="flex items-center gap-1">
+                <span className="font-semibold">{RARITY_LABELS[rarity]}</span>
+                <span>{percent.toFixed(2)}%</span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       <div
