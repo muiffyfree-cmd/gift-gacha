@@ -3,23 +3,21 @@
 import { useEffect, useState } from "react";
 import type { Prize, Rarity } from "@/types/gacha";
 import {
+  exportAllData,
+  importAllData,
   loadAdminPassword,
   loadEffects,
-  loadPrizes,
   loadPurchaseCounts,
   loadVisitStats,
   saveAdminPassword,
   saveEffects,
-  savePrizes,
+  type BackupData,
   type PurchaseCount,
   type RarityEffects,
   type VisitStats,
 } from "@/lib/storage";
+import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
 import { RARITY_BADGE_CLASSES, RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
-
-function createId(): string {
-  return Math.random().toString(36).slice(2, 9);
-}
 
 function emptyForm(): Omit<Prize, "id"> {
   return {
@@ -45,9 +43,13 @@ export default function AdminApp() {
   const [passwordError, setPasswordError] = useState("");
   const [newPasswordMemo, setNewPasswordMemo] = useState("");
   const [visitStats, setVisitStats] = useState<VisitStats>({});
+  const [backupMessage, setBackupMessage] = useState("");
+  const [prizesError, setPrizesError] = useState("");
 
   useEffect(() => {
-    setPrizes(loadPrizes());
+    fetchItems()
+      .then(setPrizes)
+      .catch((err) => setPrizesError(err instanceof Error ? err.message : "候補一覧の取得に失敗しました。"));
     setPurchaseCounts(loadPurchaseCounts());
     setEffects(loadEffects());
     setAdminPassword(loadAdminPassword());
@@ -71,9 +73,33 @@ export default function AdminApp() {
     setNewPasswordMemo("");
   }
 
-  useEffect(() => {
-    savePrizes(prizes);
-  }, [prizes]);
+  function handleExport() {
+    const data = exportAllData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gacha-gift-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result)) as BackupData;
+        importAllData(data);
+        setEffects(loadEffects());
+        setPurchaseCounts(loadPurchaseCounts());
+        setVisitStats(loadVisitStats());
+        setBackupMessage("バックアップを読み込みました。");
+      } catch {
+        setBackupMessage("ファイルの読み込みに失敗しました。");
+      }
+    };
+    reader.readAsText(file);
+  }
 
   function addEffect(rarity: Rarity) {
     const url = (newEffectUrls[rarity] ?? "").trim();
@@ -119,34 +145,39 @@ export default function AdminApp() {
     setForm(emptyForm());
   }
 
-  function handleSave() {
+  async function handleSave() {
     const name = form.name.trim();
     if (!name) return;
     const price = form.price !== undefined && !Number.isNaN(form.price) ? form.price : undefined;
     const description = form.description?.trim() || undefined;
     const affiliateUrl = form.affiliateUrl?.trim() || undefined;
     const affiliateHtml = form.affiliateHtml?.trim() || undefined;
+    const payload = { name, rarity: form.rarity, price, description, affiliateUrl, affiliateHtml };
 
-    if (editingId === "new") {
-      setPrizes((prev) => [
-        ...prev,
-        { id: createId(), name, rarity: form.rarity, price, description, affiliateUrl, affiliateHtml },
-      ]);
-    } else if (editingId) {
-      setPrizes((prev) =>
-        prev.map((p) =>
-          p.id === editingId
-            ? { ...p, name, rarity: form.rarity, price, description, affiliateUrl, affiliateHtml }
-            : p,
-        ),
-      );
+    try {
+      if (editingId === "new") {
+        const created = await createItem(payload);
+        setPrizes((prev) => [...prev, created]);
+      } else if (editingId) {
+        const updated = await updateItem(editingId, payload);
+        setPrizes((prev) => prev.map((p) => (p.id === editingId ? updated : p)));
+      }
+      setPrizesError("");
+      cancelEdit();
+    } catch (err) {
+      setPrizesError(err instanceof Error ? err.message : "保存に失敗しました。");
     }
-    cancelEdit();
   }
 
-  function handleDelete(id: string) {
-    setPrizes((prev) => prev.filter((p) => p.id !== id));
-    if (editingId === id) cancelEdit();
+  async function handleDelete(id: string) {
+    try {
+      await deleteItem(id);
+      setPrizes((prev) => prev.filter((p) => p.id !== id));
+      if (editingId === id) cancelEdit();
+      setPrizesError("");
+    } catch (err) {
+      setPrizesError(err instanceof Error ? err.message : "削除に失敗しました。");
+    }
   }
 
   if (!adminPassword) {
@@ -227,7 +258,9 @@ export default function AdminApp() {
           )}
         </div>
 
-        {prizes.length === 0 && editingId === null && (
+        {prizesError && <p className="mb-2 text-sm text-red-600">{prizesError}</p>}
+
+        {prizes.length === 0 && editingId === null && !prizesError && (
           <p className="text-sm text-gray-400">候補がまだありません。</p>
         )}
 
@@ -403,6 +436,35 @@ export default function AdminApp() {
           </div>
         </section>
       )}
+
+      <section className="rounded-xl border border-gray-200 p-4">
+        <h2 className="mb-3 font-semibold text-gray-700">データのバックアップ</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          景品データなどはブラウザ内にのみ保存されています。キャッシュ削除や別端末でのアクセスで消えてしまうため、定期的にエクスポートして保存しておくことをおすすめします。
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
+          >
+            エクスポート（ダウンロード）
+          </button>
+          <label className="rounded bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300">
+            インポート（ファイル選択）
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImport(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {backupMessage && <p className="mt-2 text-sm text-gray-600">{backupMessage}</p>}
+      </section>
 
       <section className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-3 font-semibold text-gray-700">ウェブ解析（来場人数）</h2>

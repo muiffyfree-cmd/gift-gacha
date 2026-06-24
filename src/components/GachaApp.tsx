@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import type { Prize } from "@/types/gacha";
-import { loadEffects, loadPrizes, recordVisit, saveLastResult } from "@/lib/storage";
+import { loadEffects, recordVisit, saveLastResult } from "@/lib/storage";
+import { fetchItems } from "@/lib/items";
 import { RARITY_LABELS, RARITY_WEIGHTS } from "@/lib/rarity";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import IntroBanner from "@/components/IntroBanner";
@@ -41,7 +42,9 @@ export default function GachaApp() {
   const autoSpunRef = useRef(false);
 
   useEffect(() => {
-    setPrizes(loadPrizes());
+    fetchItems()
+      .then(setPrizes)
+      .catch(() => setPrizes([]));
     recordVisit();
   }, []);
 

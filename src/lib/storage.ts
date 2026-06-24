@@ -1,34 +1,6 @@
 import type { Prize, Rarity } from "@/types/gacha";
 import { DEFAULT_RARITY_EFFECTS } from "@/lib/rarity";
 
-const STORAGE_KEY = "gacha-gift-prizes";
-
-export const DEFAULT_PRIZES: Prize[] = [
-  { id: "1", name: "ケーキ", rarity: "N" },
-  { id: "2", name: "花束", rarity: "N" },
-  { id: "3", name: "本", rarity: "R" },
-  { id: "4", name: "マグカップ", rarity: "RR" },
-  { id: "5", name: "アクセサリー", rarity: "SR" },
-];
-
-export function loadPrizes(): Prize[] {
-  if (typeof window === "undefined") return DEFAULT_PRIZES;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PRIZES;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    return DEFAULT_PRIZES;
-  } catch {
-    return DEFAULT_PRIZES;
-  }
-}
-
-export function savePrizes(prizes: Prize[]): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prizes));
-}
-
 const LAST_RESULT_KEY = "gacha-gift-last-result";
 
 export function saveLastResult(prize: Prize): void {
@@ -140,4 +112,28 @@ export function recordVisit(): void {
   const stats = loadVisitStats();
   stats[date] = (stats[date] ?? 0) + 1;
   window.localStorage.setItem(VISITS_KEY, JSON.stringify(stats));
+}
+
+export type BackupData = {
+  effects: RarityEffects;
+  purchaseCounts: PurchaseCount[];
+  visitStats: VisitStats;
+};
+
+export function exportAllData(): BackupData {
+  return {
+    effects: loadEffects(),
+    purchaseCounts: loadPurchaseCounts(),
+    visitStats: loadVisitStats(),
+  };
+}
+
+export function importAllData(data: BackupData): void {
+  if (data.effects && typeof data.effects === "object") saveEffects(data.effects);
+  if (Array.isArray(data.purchaseCounts)) {
+    window.localStorage.setItem(PURCHASE_COUNTS_KEY, JSON.stringify(data.purchaseCounts));
+  }
+  if (data.visitStats && typeof data.visitStats === "object") {
+    window.localStorage.setItem(VISITS_KEY, JSON.stringify(data.visitStats));
+  }
 }
