@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Prize } from "@/types/gacha";
 import { loadEffects, loadRarityWeights, recordVisit, saveLastResult, type RarityWeights } from "@/lib/storage";
 import { fetchItems } from "@/lib/items";
+import { fetchItemRecipients, fetchItemTypes, type Tag } from "@/lib/tags";
 import { RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import IntroBanner from "@/components/IntroBanner";
@@ -38,21 +40,39 @@ export default function GachaApp() {
     PRICE_MAX,
   ]);
   const [rarityWeights, setRarityWeights] = useState<RarityWeights>(loadRarityWeights());
+  const [itemTypes, setItemTypes] = useState<Tag[]>([]);
+  const [itemRecipients, setItemRecipients] = useState<Tag[]>([]);
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const autoSpunRef = useRef(false);
 
   useEffect(() => {
     fetchItems()
       .then(setPrizes)
       .catch(() => setPrizes([]));
+    fetchItemTypes().then(setItemTypes).catch(() => setItemTypes([]));
+    fetchItemRecipients().then(setItemRecipients).catch(() => setItemRecipients([]));
     recordVisit();
     setRarityWeights(loadRarityWeights());
   }, []);
 
+  function toggleRecipientFilter(name: string) {
+    setSelectedRecipients((prev) =>
+      prev.includes(name) ? prev.filter((r) => r !== name) : [...prev, name],
+    );
+  }
+
   const filteredPrizes = useMemo(() => {
-    if (!priceRange) return prizes;
     const [low, high] = priceRange;
-    return prizes.filter((p) => p.price === undefined || (p.price >= low && p.price <= high));
-  }, [prizes, priceRange]);
+    return prizes.filter((p) => {
+      const matchesPrice = p.price === undefined || (p.price >= low && p.price <= high);
+      const matchesType = !selectedType || p.type === selectedType;
+      const matchesRecipients =
+        selectedRecipients.length === 0 ||
+        selectedRecipients.some((r) => p.recipients?.includes(r));
+      return matchesPrice && matchesType && matchesRecipients;
+    });
+  }, [prizes, priceRange, selectedType, selectedRecipients]);
 
   useEffect(() => {
     if (autoSpunRef.current) return;
@@ -67,7 +87,7 @@ export default function GachaApp() {
     setHistory((prev) => [picked, ...prev].slice(0, 10));
     setIsSpinning(false);
     saveLastResult(picked);
-    router.push("/result");
+    router.push(`/result/${picked.id}`);
   }
 
   function handleSpin() {
@@ -134,8 +154,55 @@ export default function GachaApp() {
             value={priceRange}
             onChange={setPriceRange}
           />
+          <Link href="/price" className="mt-2 inline-block text-xs text-pink-600 hover:underline">
+            価格帯ごとのおすすめ一覧を見る →
+          </Link>
         </section>
       </div>
+
+      {(itemTypes.length > 0 || itemRecipients.length > 0) && (
+        <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+          <section className="rounded-xl border border-gray-200 bg-white/80 p-4">
+            {itemTypes.length > 0 && (
+              <div className="mb-3">
+                <h2 className="mb-2 text-sm font-semibold text-gray-700">種類で絞り込む</h2>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                >
+                  <option value="">すべて</option>
+                  {itemTypes.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {itemRecipients.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-sm font-semibold text-gray-700">送る相手で絞り込む</h2>
+                <div className="flex flex-wrap gap-2">
+                  {itemRecipients.map((r) => (
+                    <label
+                      key={r.id}
+                      className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-600"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedRecipients.includes(r.name)}
+                        onChange={() => toggleRecipientFilter(r.name)}
+                      />
+                      {r.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
 
       <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
         <ul className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 sm:text-sm">

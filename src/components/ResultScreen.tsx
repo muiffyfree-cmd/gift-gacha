@@ -26,14 +26,15 @@ function SectionHeading({ step, label }: { step: number; label: string }) {
   );
 }
 
-export default function ResultScreen() {
-  const [prize, setPrize] = useState<Prize | null>(null);
-  const [loaded, setLoaded] = useState(false);
+export default function ResultScreen({ initialPrize }: { initialPrize?: Prize | null }) {
+  const [prize, setPrize] = useState<Prize | null>(initialPrize ?? null);
+  const [loaded, setLoaded] = useState(initialPrize !== undefined);
 
   useEffect(() => {
+    if (initialPrize !== undefined) return;
     setPrize(loadLastResult());
     setLoaded(true);
-  }, []);
+  }, [initialPrize]);
 
   if (!loaded) return null;
 

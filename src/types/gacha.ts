@@ -8,4 +8,6 @@ export type Prize = {
   description?: string;
   affiliateUrl?: string;
   affiliateHtml?: string;
+  type?: string;
+  recipients?: string[];
 };

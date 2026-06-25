@@ -22,6 +22,15 @@ import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
 import { checkIsAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { uploadEffectVideo } from "@/lib/uploads";
+import {
+  createItemRecipient,
+  createItemType,
+  deleteItemRecipient,
+  deleteItemType,
+  fetchItemRecipients,
+  fetchItemTypes,
+  type Tag,
+} from "@/lib/tags";
 import { RARITY_BADGE_CLASSES, RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
 
 function emptyForm(): Omit<Prize, "id"> {
@@ -32,6 +41,8 @@ function emptyForm(): Omit<Prize, "id"> {
     description: "",
     affiliateUrl: "",
     affiliateHtml: "",
+    type: undefined,
+    recipients: [],
   };
 }
 
@@ -48,6 +59,11 @@ export default function AdminApp() {
   const [backupMessage, setBackupMessage] = useState("");
   const [prizesError, setPrizesError] = useState("");
   const [rarityWeights, setRarityWeights] = useState<RarityWeights | null>(null);
+  const [itemTypes, setItemTypes] = useState<Tag[]>([]);
+  const [itemRecipients, setItemRecipients] = useState<Tag[]>([]);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newRecipientName, setNewRecipientName] = useState("");
+  const [tagsError, setTagsError] = useState("");
 
   const [authLoading, setAuthLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
@@ -86,7 +102,63 @@ export default function AdminApp() {
     setEffects(loadEffects());
     setVisitStats(loadVisitStats());
     setRarityWeights(loadRarityWeights());
+    fetchItemTypes().then(setItemTypes).catch(() => {});
+    fetchItemRecipients().then(setItemRecipients).catch(() => {});
   }, [session, isAdmin]);
+
+  async function handleAddType() {
+    const name = newTypeName.trim();
+    if (!name) return;
+    try {
+      const created = await createItemType(name);
+      setItemTypes((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewTypeName("");
+      setTagsError("");
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "種類の追加に失敗しました。");
+    }
+  }
+
+  async function handleDeleteType(id: string) {
+    try {
+      await deleteItemType(id);
+      setItemTypes((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "種類の削除に失敗しました。");
+    }
+  }
+
+  async function handleAddRecipient() {
+    const name = newRecipientName.trim();
+    if (!name) return;
+    try {
+      const created = await createItemRecipient(name);
+      setItemRecipients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewRecipientName("");
+      setTagsError("");
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "相手の追加に失敗しました。");
+    }
+  }
+
+  async function handleDeleteRecipient(id: string) {
+    try {
+      await deleteItemRecipient(id);
+      setItemRecipients((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "相手の削除に失敗しました。");
+    }
+  }
+
+  function toggleRecipient(name: string) {
+    setForm((f) => {
+      const current = f.recipients ?? [];
+      const next = current.includes(name)
+        ? current.filter((r) => r !== name)
+        : [...current, name];
+      return { ...f, recipients: next };
+    });
+  }
 
   function handleWeightChange(rarity: Rarity, value: number) {
     setRarityWeights((prev) => {
@@ -199,6 +271,8 @@ export default function AdminApp() {
       description: prize.description ?? "",
       affiliateUrl: prize.affiliateUrl ?? "",
       affiliateHtml: prize.affiliateHtml ?? "",
+      type: prize.type,
+      recipients: prize.recipients ?? [],
     });
   }
 
@@ -214,7 +288,16 @@ export default function AdminApp() {
     const description = form.description?.trim() || undefined;
     const affiliateUrl = form.affiliateUrl?.trim() || undefined;
     const affiliateHtml = form.affiliateHtml?.trim() || undefined;
-    const payload = { name, rarity: form.rarity, price, description, affiliateUrl, affiliateHtml };
+    const payload = {
+      name,
+      rarity: form.rarity,
+      price,
+      description,
+      affiliateUrl,
+      affiliateHtml,
+      type: form.type,
+      recipients: form.recipients,
+    };
 
     try {
       if (editingId === "new") {
@@ -363,6 +446,16 @@ export default function AdminApp() {
                     ¥{prize.price.toLocaleString()}
                   </span>
                 )}
+                {prize.type && (
+                  <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                    {prize.type}
+                  </span>
+                )}
+                {prize.recipients && prize.recipients.length > 0 && (
+                  <span className="shrink-0 truncate text-xs text-gray-500">
+                    {prize.recipients.join("・")}
+                  </span>
+                )}
                 {prize.affiliateUrl && (
                   <a
                     href={prize.affiliateUrl}
@@ -431,6 +524,48 @@ export default function AdminApp() {
                 ))}
               </select>
             </label>
+
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              種類（任意）
+              <select
+                value={form.type ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, type: e.target.value || undefined }))
+                }
+                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+              >
+                <option value="">未設定</option>
+                {itemTypes.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              相手（任意・複数選択可）
+              <div className="flex flex-wrap gap-2">
+                {itemRecipients.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    相手の候補がまだありません。下の「タグ管理」で追加してください。
+                  </p>
+                )}
+                {itemRecipients.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(form.recipients ?? []).includes(r.name)}
+                      onChange={() => toggleRecipient(r.name)}
+                    />
+                    {r.name}
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <label className="flex flex-col gap-1 text-sm text-gray-600">
               金額（任意・円）
@@ -610,6 +745,88 @@ export default function AdminApp() {
               ))}
           </ol>
         )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4">
+        <h2 className="mb-3 font-semibold text-gray-700">タグ管理（種類・相手）</h2>
+        {tagsError && <p className="mb-2 text-sm text-red-600">{tagsError}</p>}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">種類（単一選択用）</h3>
+            <ul className="mb-2 flex flex-col gap-1">
+              {itemTypes.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
+                >
+                  <span className="truncate text-gray-700">{t.name}</span>
+                  <button
+                    onClick={() => handleDeleteType(t.id)}
+                    className="shrink-0 rounded bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+              {itemTypes.length === 0 && (
+                <li className="text-xs text-gray-400">種類がまだありません。</li>
+              )}
+            </ul>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                placeholder="例: 雑貨"
+                className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+              />
+              <button
+                onClick={handleAddType}
+                className="rounded bg-pink-600 px-3 py-1 text-xs font-semibold text-white hover:bg-pink-700"
+              >
+                + 追加
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">相手（複数選択用）</h3>
+            <ul className="mb-2 flex flex-col gap-1">
+              {itemRecipients.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
+                >
+                  <span className="truncate text-gray-700">{r.name}</span>
+                  <button
+                    onClick={() => handleDeleteRecipient(r.id)}
+                    className="shrink-0 rounded bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+              {itemRecipients.length === 0 && (
+                <li className="text-xs text-gray-400">相手がまだありません。</li>
+              )}
+            </ul>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newRecipientName}
+                onChange={(e) => setNewRecipientName(e.target.value)}
+                placeholder="例: 友達"
+                className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+              />
+              <button
+                onClick={handleAddRecipient}
+                className="rounded bg-pink-600 px-3 py-1 text-xs font-semibold text-white hover:bg-pink-700"
+              >
+                + 追加
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-xl border border-gray-200 p-4">

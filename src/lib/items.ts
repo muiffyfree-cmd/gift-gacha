@@ -9,6 +9,8 @@ type ItemRow = {
   description: string | null;
   affiliateurl: string | null;
   affiliatehtml: string | null;
+  type: string | null;
+  recipients: string[] | null;
 };
 
 function rowToPrize(row: ItemRow): Prize {
@@ -20,6 +22,8 @@ function rowToPrize(row: ItemRow): Prize {
     description: row.description ?? undefined,
     affiliateUrl: row.affiliateurl ?? undefined,
     affiliateHtml: row.affiliatehtml ?? undefined,
+    type: row.type ?? undefined,
+    recipients: row.recipients ?? undefined,
   };
 }
 
@@ -31,6 +35,8 @@ function prizeToRow(item: Omit<Prize, "id">) {
     description: item.description ?? null,
     affiliateurl: item.affiliateUrl ?? null,
     affiliatehtml: item.affiliateHtml ?? null,
+    type: item.type ?? null,
+    recipients: item.recipients ?? [],
   };
 }
 
@@ -41,6 +47,27 @@ export async function fetchItems(): Promise<Prize[]> {
     .order("name", { ascending: true });
   if (error) throw error;
   return (data as ItemRow[]).map(rowToPrize);
+}
+
+export async function fetchItemsByPriceRange(min: number, max: number): Promise<Prize[]> {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .gte("price", min)
+    .lte("price", max)
+    .order("price", { ascending: true });
+  if (error) throw error;
+  return (data as ItemRow[]).map(rowToPrize);
+}
+
+export async function fetchItemById(id: string): Promise<Prize | null> {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToPrize(data as ItemRow) : null;
 }
 
 export async function createItem(item: Omit<Prize, "id">): Promise<Prize> {
