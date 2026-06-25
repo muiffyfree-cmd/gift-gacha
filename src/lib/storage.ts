@@ -94,18 +94,6 @@ export function saveRarityWeights(weights: RarityWeights): void {
   window.localStorage.setItem(RARITY_WEIGHTS_KEY, JSON.stringify(weights));
 }
 
-const ADMIN_PASSWORD_KEY = "gacha-gift-admin-password";
-
-export function loadAdminPassword(): string {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(ADMIN_PASSWORD_KEY) ?? "";
-}
-
-export function saveAdminPassword(password: string): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(ADMIN_PASSWORD_KEY, password);
-}
-
 const VISITS_KEY = "gacha-gift-visits";
 const VISITED_TODAY_PREFIX = "gacha-gift-visited-";
 

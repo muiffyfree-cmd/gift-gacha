@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { Prize, Rarity } from "@/types/gacha";
 import {
   exportAllData,
   importAllData,
-  loadAdminPassword,
   loadEffects,
   loadPurchaseCounts,
   loadRarityWeights,
   loadVisitStats,
-  saveAdminPassword,
   saveEffects,
   saveRarityWeights,
   type BackupData,
@@ -20,6 +19,8 @@ import {
   type VisitStats,
 } from "@/lib/storage";
 import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
+import { checkIsAdmin } from "@/lib/admin";
+import { supabase } from "@/lib/supabase";
 import { RARITY_BADGE_CLASSES, RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
 
 function emptyForm(): Omit<Prize, "id"> {
@@ -40,26 +41,49 @@ export default function AdminApp() {
   const [purchaseCounts, setPurchaseCounts] = useState<PurchaseCount[]>([]);
   const [effects, setEffects] = useState<RarityEffects>({});
   const [newEffectUrls, setNewEffectUrls] = useState<Partial<Record<Rarity, string>>>({});
-  const [adminPassword, setAdminPassword] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [newPasswordMemo, setNewPasswordMemo] = useState("");
   const [visitStats, setVisitStats] = useState<VisitStats>({});
   const [backupMessage, setBackupMessage] = useState("");
   const [prizesError, setPrizesError] = useState("");
   const [rarityWeights, setRarityWeights] = useState<RarityWeights | null>(null);
 
+  const [authLoading, setAuthLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const email = session?.user?.email;
+    if (!email) {
+      setIsAdmin(null);
+      return;
+    }
+    checkIsAdmin(email).then(setIsAdmin);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || !isAdmin) return;
     fetchItems()
       .then(setPrizes)
       .catch((err) => setPrizesError(err instanceof Error ? err.message : "候補一覧の取得に失敗しました。"));
     setPurchaseCounts(loadPurchaseCounts());
     setEffects(loadEffects());
-    setAdminPassword(loadAdminPassword());
     setVisitStats(loadVisitStats());
     setRarityWeights(loadRarityWeights());
-  }, []);
+  }, [session, isAdmin]);
 
   function handleWeightChange(rarity: Rarity, value: number) {
     setRarityWeights((prev) => {
@@ -70,21 +94,25 @@ export default function AdminApp() {
     });
   }
 
-  function handleUnlock() {
-    if (passwordInput === adminPassword) {
-      setUnlocked(true);
-      setPasswordError("");
-    } else {
-      setPasswordError("パスワードが違います。");
+  async function handleLogin() {
+    setLoginLoading(true);
+    setLoginError("");
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPassword,
+    });
+    setLoginLoading(false);
+    if (error) {
+      setLoginError("ログインに失敗しました。メールアドレスとパスワードを確認してください。");
+      return;
     }
+    setLoginPassword("");
   }
 
-  function handleSetPassword() {
-    const next = newPasswordMemo.trim();
-    if (!next) return;
-    saveAdminPassword(next);
-    setAdminPassword(next);
-    setNewPasswordMemo("");
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setSession(null);
+    setIsAdmin(null);
   }
 
   function handleExport() {
@@ -194,55 +222,63 @@ export default function AdminApp() {
     }
   }
 
-  if (!adminPassword) {
+  if (authLoading) {
+    return <div className="px-4 py-20 text-center text-sm text-gray-400">読み込み中...</div>;
+  }
+
+  if (!session) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-20">
-        <h1 className="text-xl font-bold text-gray-800">パスワードの設定</h1>
-        <p className="text-sm text-gray-500">
-          管理者画面に入るためのパスワードをメモに記述してください。次回以降の入室時に使います。
-        </p>
+        <h1 className="text-xl font-bold text-gray-800">管理者ログイン</h1>
         <label className="flex flex-col gap-1 text-sm text-gray-600">
-          パスワード（メモ）
+          メールアドレス
           <input
-            type="text"
-            value={newPasswordMemo}
-            onChange={(e) => setNewPasswordMemo(e.target.value)}
-            placeholder="ここにパスワードを記述"
+            type="email"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="admin@example.com"
             className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm text-gray-600">
+          パスワード
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            placeholder="パスワードを入力"
+            className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+          />
+        </label>
+        {loginError && <p className="text-sm text-red-600">{loginError}</p>}
         <button
-          onClick={handleSetPassword}
-          disabled={!newPasswordMemo.trim()}
+          onClick={handleLogin}
+          disabled={loginLoading || !loginEmail.trim() || !loginPassword}
           className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          設定する
+          {loginLoading ? "ログイン中..." : "ログイン"}
         </button>
       </div>
     );
   }
 
-  if (!unlocked) {
+  if (isAdmin === null) {
+    return <div className="px-4 py-20 text-center text-sm text-gray-400">確認中...</div>;
+  }
+
+  if (!isAdmin) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-20">
-        <h1 className="text-xl font-bold text-gray-800">管理者ログイン</h1>
-        <label className="flex flex-col gap-1 text-sm text-gray-600">
-          パスワード
-          <input
-            type="password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-            placeholder="パスワードを入力"
-            className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
-          />
-        </label>
-        {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+        <h1 className="text-xl font-bold text-gray-800">アクセス権限がありません</h1>
+        <p className="text-sm text-gray-500">
+          {session.user.email} は管理者として登録されていません。管理者に追加してもらってください。
+        </p>
         <button
-          onClick={handleUnlock}
-          className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
+          onClick={handleLogout}
+          className="rounded bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
         >
-          ログイン
+          ログアウト
         </button>
       </div>
     );
@@ -250,13 +286,22 @@ export default function AdminApp() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-800">
-          🛠 ガチャ管理画面（muiffybase）
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          プレゼント候補の名前・レアリティ・金額・アフィリエイトURLを管理します。
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            🛠 ガチャ管理画面（muiffybase）
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            プレゼント候補の名前・レアリティ・金額・アフィリエイトURLを管理します。
+          </p>
+          <p className="mt-1 text-xs text-gray-400">ログイン中: {session.user.email}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="shrink-0 rounded bg-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-300"
+        >
+          ログアウト
+        </button>
       </header>
 
       <section className="rounded-xl border border-gray-200 p-4">
@@ -519,26 +564,6 @@ export default function AdminApp() {
             </div>
           );
         })()}
-      </section>
-
-      <section className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-3 font-semibold text-gray-700">パスワードの変更</h2>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newPasswordMemo}
-            onChange={(e) => setNewPasswordMemo(e.target.value)}
-            placeholder="新しいパスワードをメモに記述"
-            className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
-          />
-          <button
-            onClick={handleSetPassword}
-            disabled={!newPasswordMemo.trim()}
-            className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-          >
-            変更する
-          </button>
-        </div>
       </section>
 
       <section className="rounded-xl border border-gray-200 p-4">
