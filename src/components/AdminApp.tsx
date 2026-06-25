@@ -21,6 +21,7 @@ import {
 import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
 import { checkIsAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
+import { uploadEffectVideo } from "@/lib/uploads";
 import { RARITY_BADGE_CLASSES, RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
 
 function emptyForm(): Omit<Prize, "id"> {
@@ -41,6 +42,8 @@ export default function AdminApp() {
   const [purchaseCounts, setPurchaseCounts] = useState<PurchaseCount[]>([]);
   const [effects, setEffects] = useState<RarityEffects>({});
   const [newEffectUrls, setNewEffectUrls] = useState<Partial<Record<Rarity, string>>>({});
+  const [uploadingRarity, setUploadingRarity] = useState<Rarity | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const [visitStats, setVisitStats] = useState<VisitStats>({});
   const [backupMessage, setBackupMessage] = useState("");
   const [prizesError, setPrizesError] = useState("");
@@ -143,15 +146,32 @@ export default function AdminApp() {
     reader.readAsText(file);
   }
 
-  function addEffect(rarity: Rarity) {
-    const url = (newEffectUrls[rarity] ?? "").trim();
-    if (!url) return;
+  function appendEffectUrl(rarity: Rarity, url: string) {
     setEffects((prev) => {
       const next = { ...prev, [rarity]: [...(prev[rarity] ?? []), url] };
       saveEffects(next);
       return next;
     });
+  }
+
+  function addEffect(rarity: Rarity) {
+    const url = (newEffectUrls[rarity] ?? "").trim();
+    if (!url) return;
+    appendEffectUrl(rarity, url);
     setNewEffectUrls((prev) => ({ ...prev, [rarity]: "" }));
+  }
+
+  async function handleUploadEffect(rarity: Rarity, file: File) {
+    setUploadingRarity(rarity);
+    setUploadError("");
+    try {
+      const url = await uploadEffectVideo(file);
+      appendEffectUrl(rarity, url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "アップロードに失敗しました。");
+    } finally {
+      setUploadingRarity(null);
+    }
   }
 
   function removeEffect(rarity: Rarity, index: number) {
@@ -627,6 +647,10 @@ export default function AdminApp() {
 
       <section className="rounded-xl border border-gray-200 p-4">
         <h2 className="mb-3 font-semibold text-gray-700">演出（動画）の管理</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          URLを直接入力するか、動画ファイルをアップロードして追加できます（アップロードはSupabase Storageに保存されます）。
+        </p>
+        {uploadError && <p className="mb-3 text-sm text-red-600">{uploadError}</p>}
         <div className="flex flex-col gap-4">
           {RARITY_OPTIONS.map((rarity) => (
             <div key={rarity} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
@@ -673,6 +697,20 @@ export default function AdminApp() {
                   + 追加
                 </button>
               </div>
+              <label className="mt-2 inline-block cursor-pointer rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300">
+                {uploadingRarity === rarity ? "アップロード中..." : "動画ファイルをアップロード"}
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  disabled={uploadingRarity !== null}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadEffect(rarity, file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
           ))}
         </div>
