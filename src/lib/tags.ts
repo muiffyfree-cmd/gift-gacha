@@ -2,44 +2,37 @@ import { supabase } from "@/lib/supabase";
 
 export type Tag = { id: string; name: string };
 
-export async function fetchItemTypes(): Promise<Tag[]> {
-  const { data, error } = await supabase.from("item_types").select("*").order("name");
-  if (error) throw error;
-  return data as Tag[];
+function makeTagApi(table: string) {
+  return {
+    async fetch(): Promise<Tag[]> {
+      const { data, error } = await supabase.from(table).select("*").order("name");
+      if (error) throw error;
+      return data as Tag[];
+    },
+    async create(name: string): Promise<Tag> {
+      const { data, error } = await supabase.from(table).insert({ name }).select().single();
+      if (error) throw error;
+      return data as Tag;
+    },
+    async remove(id: string): Promise<void> {
+      const { error } = await supabase.from(table).delete().eq("id", id);
+      if (error) throw error;
+    },
+  };
 }
 
-export async function createItemType(name: string): Promise<Tag> {
-  const { data, error } = await supabase
-    .from("item_types")
-    .insert({ name })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as Tag;
-}
+const typesApi = makeTagApi("item_types");
+const recipientsApi = makeTagApi("item_recipients");
+const moodsApi = makeTagApi("item_moods");
 
-export async function deleteItemType(id: string): Promise<void> {
-  const { error } = await supabase.from("item_types").delete().eq("id", id);
-  if (error) throw error;
-}
+export const fetchItemTypes = typesApi.fetch;
+export const createItemType = typesApi.create;
+export const deleteItemType = typesApi.remove;
 
-export async function fetchItemRecipients(): Promise<Tag[]> {
-  const { data, error } = await supabase.from("item_recipients").select("*").order("name");
-  if (error) throw error;
-  return data as Tag[];
-}
+export const fetchItemRecipients = recipientsApi.fetch;
+export const createItemRecipient = recipientsApi.create;
+export const deleteItemRecipient = recipientsApi.remove;
 
-export async function createItemRecipient(name: string): Promise<Tag> {
-  const { data, error } = await supabase
-    .from("item_recipients")
-    .insert({ name })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as Tag;
-}
-
-export async function deleteItemRecipient(id: string): Promise<void> {
-  const { error } = await supabase.from("item_recipients").delete().eq("id", id);
-  if (error) throw error;
-}
+export const fetchItemMoods = moodsApi.fetch;
+export const createItemMood = moodsApi.create;
+export const deleteItemMood = moodsApi.remove;

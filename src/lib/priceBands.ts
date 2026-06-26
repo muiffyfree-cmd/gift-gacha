@@ -1,5 +1,5 @@
 export const PRICE_BAND_STEP = 1000;
-export const PRICE_BAND_MAX = 10000;
+export const PRICE_BAND_MAX = 5000;
 
 export type PriceBand = { min: number; max: number; slug: string; label: string };
 

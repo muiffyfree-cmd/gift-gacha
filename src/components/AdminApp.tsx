@@ -23,10 +23,13 @@ import { checkIsAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { uploadEffectVideo } from "@/lib/uploads";
 import {
+  createItemMood,
   createItemRecipient,
   createItemType,
+  deleteItemMood,
   deleteItemRecipient,
   deleteItemType,
+  fetchItemMoods,
   fetchItemRecipients,
   fetchItemTypes,
   type Tag,
@@ -43,6 +46,7 @@ function emptyForm(): Omit<Prize, "id"> {
     affiliateHtml: "",
     type: undefined,
     recipients: [],
+    moods: [],
   };
 }
 
@@ -61,8 +65,10 @@ export default function AdminApp() {
   const [rarityWeights, setRarityWeights] = useState<RarityWeights | null>(null);
   const [itemTypes, setItemTypes] = useState<Tag[]>([]);
   const [itemRecipients, setItemRecipients] = useState<Tag[]>([]);
+  const [itemMoods, setItemMoods] = useState<Tag[]>([]);
   const [newTypeName, setNewTypeName] = useState("");
   const [newRecipientName, setNewRecipientName] = useState("");
+  const [newMoodName, setNewMoodName] = useState("");
   const [tagsError, setTagsError] = useState("");
 
   const [authLoading, setAuthLoading] = useState(true);
@@ -104,6 +110,7 @@ export default function AdminApp() {
     setRarityWeights(loadRarityWeights());
     fetchItemTypes().then(setItemTypes).catch(() => {});
     fetchItemRecipients().then(setItemRecipients).catch(() => {});
+    fetchItemMoods().then(setItemMoods).catch(() => {});
   }, [session, isAdmin]);
 
   async function handleAddType() {
@@ -158,6 +165,42 @@ export default function AdminApp() {
         : [...current, name];
       return { ...f, recipients: next };
     });
+  }
+
+  function toggleMood(name: string) {
+    setForm((f) => {
+      const current = f.moods ?? [];
+      const next = current.includes(name)
+        ? current.filter((m) => m !== name)
+        : [...current, name];
+      return { ...f, moods: next };
+    });
+  }
+
+  function selectType(name: string) {
+    setForm((f) => ({ ...f, type: f.type === name ? undefined : name }));
+  }
+
+  async function handleAddMood() {
+    const name = newMoodName.trim();
+    if (!name) return;
+    try {
+      const created = await createItemMood(name);
+      setItemMoods((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewMoodName("");
+      setTagsError("");
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "気分の追加に失敗しました。");
+    }
+  }
+
+  async function handleDeleteMood(id: string) {
+    try {
+      await deleteItemMood(id);
+      setItemMoods((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      setTagsError(err instanceof Error ? err.message : "気分の削除に失敗しました。");
+    }
   }
 
   function handleWeightChange(rarity: Rarity, value: number) {
@@ -273,6 +316,7 @@ export default function AdminApp() {
       affiliateHtml: prize.affiliateHtml ?? "",
       type: prize.type,
       recipients: prize.recipients ?? [],
+      moods: prize.moods ?? [],
     });
   }
 
@@ -297,6 +341,7 @@ export default function AdminApp() {
       affiliateHtml,
       type: form.type,
       recipients: form.recipients,
+      moods: form.moods,
     };
 
     try {
@@ -456,6 +501,11 @@ export default function AdminApp() {
                     {prize.recipients.join("・")}
                   </span>
                 )}
+                {prize.moods && prize.moods.length > 0 && (
+                  <span className="shrink-0 truncate text-xs text-gray-400">
+                    {prize.moods.join("・")}
+                  </span>
+                )}
                 {prize.affiliateUrl && (
                   <a
                     href={prize.affiliateUrl}
@@ -492,7 +542,14 @@ export default function AdminApp() {
       </section>
 
       {editingId !== null && (
-        <section className="rounded-xl border border-pink-300 bg-pink-50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={cancelEdit}
+        >
+          <section
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-pink-300 bg-pink-50 p-4 shadow-xl"
+          >
           <h2 className="mb-3 font-semibold text-gray-700">
             {editingId === "new" ? "新規候補の追加" : "候補の編集"}
           </h2>
@@ -524,48 +581,6 @@ export default function AdminApp() {
                 ))}
               </select>
             </label>
-
-            <label className="flex flex-col gap-1 text-sm text-gray-600">
-              種類（任意）
-              <select
-                value={form.type ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, type: e.target.value || undefined }))
-                }
-                className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
-              >
-                <option value="">未設定</option>
-                {itemTypes.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="flex flex-col gap-1 text-sm text-gray-600">
-              相手（任意・複数選択可）
-              <div className="flex flex-wrap gap-2">
-                {itemRecipients.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    相手の候補がまだありません。下の「タグ管理」で追加してください。
-                  </p>
-                )}
-                {itemRecipients.map((r) => (
-                  <label
-                    key={r.id}
-                    className="flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={(form.recipients ?? []).includes(r.name)}
-                      onChange={() => toggleRecipient(r.name)}
-                    />
-                    {r.name}
-                  </label>
-                ))}
-              </div>
-            </div>
 
             <label className="flex flex-col gap-1 text-sm text-gray-600">
               金額（任意・円）
@@ -632,6 +647,90 @@ export default function AdminApp() {
               )}
             </label>
 
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              種類（任意・1つ選択）
+              <div className="flex flex-wrap gap-2">
+                {itemTypes.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    種類の候補がまだありません。下の「タグ管理」で追加してください。
+                  </p>
+                )}
+                {itemTypes.map((t) => {
+                  const selected = form.type === t.name;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => selectType(t.name)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        selected
+                          ? "border-pink-600 bg-pink-600 text-white"
+                          : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              相手（任意・複数選択可）
+              <div className="flex flex-wrap gap-2">
+                {itemRecipients.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    相手の候補がまだありません。下の「タグ管理」で追加してください。
+                  </p>
+                )}
+                {itemRecipients.map((r) => {
+                  const selected = (form.recipients ?? []).includes(r.name);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleRecipient(r.name)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        selected
+                          ? "border-pink-600 bg-pink-600 text-white"
+                          : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                      }`}
+                    >
+                      {r.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              気分（任意・複数選択可）
+              <div className="flex flex-wrap gap-2">
+                {itemMoods.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    気分の候補がまだありません。下の「タグ管理」で追加してください。
+                  </p>
+                )}
+                {itemMoods.map((m) => {
+                  const selected = (form.moods ?? []).includes(m.name);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => toggleMood(m.name)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        selected
+                          ? "border-pink-600 bg-pink-600 text-white"
+                          : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -648,7 +747,8 @@ export default function AdminApp() {
               </button>
             </div>
           </div>
-        </section>
+          </section>
+        </div>
       )}
 
       <section className="rounded-xl border border-gray-200 p-4">
@@ -748,9 +848,9 @@ export default function AdminApp() {
       </section>
 
       <section className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-3 font-semibold text-gray-700">タグ管理（種類・相手）</h2>
+        <h2 className="mb-3 font-semibold text-gray-700">タグ管理（種類・相手・気分）</h2>
         {tagsError && <p className="mb-2 text-sm text-red-600">{tagsError}</p>}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <h3 className="mb-2 text-sm font-semibold text-gray-600">種類（単一選択用）</h3>
             <ul className="mb-2 flex flex-col gap-1">
@@ -820,6 +920,44 @@ export default function AdminApp() {
               />
               <button
                 onClick={handleAddRecipient}
+                className="rounded bg-pink-600 px-3 py-1 text-xs font-semibold text-white hover:bg-pink-700"
+              >
+                + 追加
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">気分（複数選択用）</h3>
+            <ul className="mb-2 flex flex-col gap-1">
+              {itemMoods.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
+                >
+                  <span className="truncate text-gray-700">{m.name}</span>
+                  <button
+                    onClick={() => handleDeleteMood(m.id)}
+                    className="shrink-0 rounded bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+              {itemMoods.length === 0 && (
+                <li className="text-xs text-gray-400">気分がまだありません。</li>
+              )}
+            </ul>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMoodName}
+                onChange={(e) => setNewMoodName(e.target.value)}
+                placeholder="例: 楽しい"
+                className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+              />
+              <button
+                onClick={handleAddMood}
                 className="rounded bg-pink-600 px-3 py-1 text-xs font-semibold text-white hover:bg-pink-700"
               >
                 + 追加

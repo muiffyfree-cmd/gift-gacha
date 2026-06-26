@@ -11,6 +11,7 @@ type ItemRow = {
   affiliatehtml: string | null;
   type: string | null;
   recipients: string[] | null;
+  moods: string[] | null;
 };
 
 function rowToPrize(row: ItemRow): Prize {
@@ -24,6 +25,7 @@ function rowToPrize(row: ItemRow): Prize {
     affiliateHtml: row.affiliatehtml ?? undefined,
     type: row.type ?? undefined,
     recipients: row.recipients ?? undefined,
+    moods: row.moods ?? undefined,
   };
 }
 
@@ -37,6 +39,7 @@ function prizeToRow(item: Omit<Prize, "id">) {
     affiliatehtml: item.affiliateHtml ?? null,
     type: item.type ?? null,
     recipients: item.recipients ?? [],
+    moods: item.moods ?? [],
   };
 }
 

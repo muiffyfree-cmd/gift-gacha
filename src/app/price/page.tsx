@@ -12,11 +12,12 @@ export default function PriceIndexPage() {
   const bands = getPriceBands();
 
   return (
+    <div className="min-h-screen bg-black text-white">
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10">
       <Breadcrumb items={[{ label: "ホーム", href: "/" }, { label: "価格帯から探す" }]} />
       <header>
-        <h1 className="text-2xl font-bold text-gray-800">価格帯から探す</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold">価格帯から探す</h1>
+        <p className="mt-1 text-sm text-gray-400">
           予算に合わせて、誕生日プレゼントのおすすめ候補を価格帯ごとに一覧でご紹介します。
         </p>
       </header>
@@ -32,6 +33,7 @@ export default function PriceIndexPage() {
           </li>
         ))}
       </ul>
+    </div>
     </div>
   );
 }
