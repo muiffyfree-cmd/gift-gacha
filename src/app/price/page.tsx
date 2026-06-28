@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { getPriceBands } from "@/lib/priceBands";
+import AdBanner from "@/components/AdBanner";
 
 export const metadata: Metadata = {
   title: "価格帯から探す | 誕生日プレゼント ガチャ",
@@ -33,6 +34,10 @@ export default function PriceIndexPage() {
           </li>
         ))}
       </ul>
+      <AdBanner />
+      <Link href="/" className="text-sm text-gray-400 hover:text-white">
+        ← ホームに戻る
+      </Link>
     </div>
     </div>
   );

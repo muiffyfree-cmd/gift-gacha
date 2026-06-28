@@ -6,6 +6,7 @@ import { fetchItemTypes, fetchItemRecipients, fetchItemMoods } from "@/lib/tags"
 import { fetchItemsByPriceRange } from "@/lib/items";
 import { parsePriceBandSlug } from "@/lib/priceBands";
 import { RARITY_LABELS } from "@/lib/rarity";
+import AdBanner from "@/components/AdBanner";
 
 function dec(s: string) {
   try { return decodeURIComponent(s); } catch { return s; }
@@ -85,8 +86,13 @@ export default async function WizardStepsPage({
             </li>
           ))}
         </ul>
+        <AdBanner />
+
         <Link href={`/price/${range}`} className="text-sm text-gray-400 hover:text-white">
           ← 種類を選び直す
+        </Link>
+        <Link href="/" className="text-sm text-gray-400 hover:text-white">
+          ← ホームに戻る
         </Link>
       </div>
       </div>
@@ -131,8 +137,13 @@ export default async function WizardStepsPage({
             </li>
           ))}
         </ul>
+        <AdBanner />
+
         <Link href={`/price/${range}/${type}`} className="text-sm text-gray-400 hover:text-white">
           ← 送る相手を選び直す
+        </Link>
+        <Link href="/" className="text-sm text-gray-400 hover:text-white">
+          ← ホームに戻る
         </Link>
       </div>
       </div>
@@ -217,6 +228,8 @@ export default async function WizardStepsPage({
           </ul>
         )}
 
+        <AdBanner />
+
         <div className="flex flex-col gap-2">
           <Link href={`/price/${range}/${type}/${recipient}`} className="text-sm text-gray-400 hover:text-white">
             ← 気分を選び直す
@@ -229,6 +242,9 @@ export default async function WizardStepsPage({
           </Link>
           <Link href="/price" className="text-sm text-gray-400 hover:text-white">
             ← 価格帯を選び直す
+          </Link>
+          <Link href="/" className="text-sm text-gray-400 hover:text-white">
+            ← ホームに戻る
           </Link>
         </div>
       </div>

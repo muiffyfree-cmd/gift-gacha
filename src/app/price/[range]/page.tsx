@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import { fetchItemTypes } from "@/lib/tags";
 import { parsePriceBandSlug } from "@/lib/priceBands";
+import AdBanner from "@/components/AdBanner";
 
 export async function generateMetadata({
   params,
@@ -68,8 +69,13 @@ export default async function TypeSelectPage({
           ))}
         </ul>
 
+        <AdBanner />
+
         <Link href="/price" className="text-sm text-gray-400 hover:text-white">
           ← 他の価格帯を見る
+        </Link>
+        <Link href="/" className="text-sm text-gray-400 hover:text-white">
+          ← ホームに戻る
         </Link>
       </div>
     </div>
