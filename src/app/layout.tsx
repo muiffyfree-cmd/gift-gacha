@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import Link from "next/link";
 import "./globals.css";
 
 const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
@@ -49,7 +50,16 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <footer className="mt-auto py-4 text-center text-xs text-zinc-400 border-t border-zinc-200">
+          <Link href="/privacy" className="underline hover:text-zinc-600">
+            プライバシーポリシー
+          </Link>
+          <span className="mx-2">|</span>
+          <span>© 2026 誕プレガチャ</span>
+        </footer>
+      </body>
     </html>
   );
 }
