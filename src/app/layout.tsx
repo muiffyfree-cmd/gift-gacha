@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "誕生日プレゼント ガチャ",
   description: "ガチャを回して誕生日プレゼントを決めよう",
+  icons: {
+    icon: "/gacha-machine.png",
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +34,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4177080531198906"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         {ADSENSE_CLIENT_ID && (
           <Script
             async
