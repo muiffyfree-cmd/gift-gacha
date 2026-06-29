@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: "誕生日プレゼント ガチャ",
   description: "ガチャを回して誕生日プレゼントを決めよう",
   icons: {
-    icon: "/gacha-machine.png",
+    icon: "/gacha-icon.png",
   },
 };
 
