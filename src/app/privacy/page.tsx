@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー | 誕プレガチャ",
@@ -8,7 +9,16 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 text-zinc-800">
+    <div className="relative flex flex-1 flex-col">
+      <Image
+        src="/home-background.png"
+        alt=""
+        fill
+        priority
+        aria-hidden
+        className="object-cover opacity-50"
+      />
+      <div className="relative max-w-2xl mx-auto px-6 py-12 text-zinc-800">
       <h1 className="text-2xl font-bold mb-8">プライバシーポリシー</h1>
 
       <section className="mb-8">
@@ -97,6 +107,7 @@ export default function PrivacyPage() {
           ← トップページに戻る
         </Link>
       </div>
+    </div>
     </div>
   );
 }
