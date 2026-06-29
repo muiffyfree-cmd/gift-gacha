@@ -16,6 +16,7 @@ export default function PrivacyPage() {
         fill
         priority
         aria-hidden
+        sizes="100vw"
         className="object-cover opacity-50"
       />
       <div className="relative max-w-2xl mx-auto px-6 py-12 text-zinc-800">

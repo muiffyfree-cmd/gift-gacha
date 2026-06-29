@@ -92,6 +92,7 @@ export default function GachaApp() {
         fill
         priority
         aria-hidden
+        sizes="100vw"
         className="object-cover opacity-50"
       />
 
@@ -142,6 +143,7 @@ export default function GachaApp() {
           alt="誕生日プレゼントガチャ"
           fill
           priority
+          sizes="85vh"
           className="object-contain"
         />
         <button
