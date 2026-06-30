@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import { fetchItemTypes, fetchItemRecipients, fetchItemMoods } from "@/lib/tags";
-import { fetchItemsByPriceRange } from "@/lib/items";
+import { fetchItemsByPriceRange, fetchItemByName } from "@/lib/items";
+import ResultScreen from "@/components/ResultScreen";
 import { parsePriceBandSlug } from "@/lib/priceBands";
 import { RARITY_LABELS } from "@/lib/rarity";
 import AdBanner from "@/components/AdBanner";
@@ -27,6 +28,14 @@ export async function generateMetadata({
   }
   if (steps.length === 2) {
     return { title: `${label} 気分を選ぶ | 誕生日プレゼント ガチャ` };
+  }
+  if (steps.length === 4) {
+    const itemName = dec(steps[3]);
+    const prize = await fetchItemByName(itemName).catch(() => null);
+    if (!prize) return { title: "結果が見つかりませんでした | 誕生日プレゼント ガチャ" };
+    const title = `${prize.name}（${RARITY_LABELS[prize.rarity]}）| 誕生日プレゼント ガチャ`;
+    const description = prize.description || `誕生日プレゼントガチャで「${prize.name}」が出ました。`;
+    return { title, description, openGraph: { title, description } };
   }
   const typeVal = dec(steps[0]) === "all" ? "" : `${dec(steps[0])}の`;
   const recipientVal = dec(steps[1]) === "all" ? "" : `${dec(steps[1])}への`;
@@ -214,7 +223,7 @@ export default async function WizardStepsPage({
             {items.map((item) => (
               <li key={item.id}>
                 <Link
-                  href={`/result/${item.id}`}
+                  href={`/price/${range}/${type}/${recipient}/${mood}/${encodeURIComponent(item.name)}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 hover:border-pink-300 hover:bg-pink-50"
                 >
                   <span className="font-medium text-gray-800">{item.name}</span>
@@ -248,6 +257,37 @@ export default async function WizardStepsPage({
           </Link>
         </div>
       </div>
+      </div>
+    );
+  }
+
+  // step 4: type + recipient + mood + item name → show item detail
+  if (steps.length === 4) {
+    const type = dec(steps[0]);
+    const recipient = dec(steps[1]);
+    const mood = dec(steps[2]);
+    const itemName = dec(steps[3]);
+
+    const typeLabel = type === "all" ? "絞り込まない" : type;
+    const recipientLabel = recipient === "all" ? "絞り込まない" : recipient;
+    const moodLabel = mood === "all" ? "絞り込まない" : mood;
+
+    const prize = await fetchItemByName(itemName).catch(() => null);
+
+    return (
+      <div className="flex flex-1 flex-col">
+        <Breadcrumb
+          items={[
+            { label: "ホーム", href: "/" },
+            { label: "価格帯から探す", href: "/price" },
+            { label: label, href: `/price/${range}` },
+            { label: typeLabel, href: `/price/${range}/${type}` },
+            { label: recipientLabel, href: `/price/${range}/${type}/${recipient}` },
+            { label: moodLabel, href: `/price/${range}/${type}/${recipient}/${mood}` },
+            { label: itemName },
+          ]}
+        />
+        <ResultScreen initialPrize={prize} />
       </div>
     );
   }

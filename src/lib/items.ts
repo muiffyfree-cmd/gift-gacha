@@ -63,6 +63,16 @@ export async function fetchItemsByPriceRange(min: number, max: number): Promise<
   return (data as ItemRow[]).map(rowToPrize);
 }
 
+export async function fetchItemByName(name: string): Promise<Prize | null> {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .eq("name", name)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToPrize(data as ItemRow) : null;
+}
+
 export async function fetchItemById(id: string): Promise<Prize | null> {
   const { data, error } = await supabase
     .from("items")

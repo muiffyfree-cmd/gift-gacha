@@ -71,6 +71,7 @@ export default function ResultScreen({ initialPrize }: { initialPrize?: Prize | 
         fill
         priority
         aria-hidden
+        sizes="100vw"
         className="object-cover opacity-50"
       />
 
