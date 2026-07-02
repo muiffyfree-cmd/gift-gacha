@@ -19,9 +19,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "誕生日プレゼント ガチャ",
   description: "ガチャを回して誕生日プレゼントを決めよう",
-  icons: {
-    icon: "/gacha-icon.png",
-  },
 };
 
 export default function RootLayout({
