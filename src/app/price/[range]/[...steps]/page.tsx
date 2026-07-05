@@ -8,6 +8,7 @@ import ResultScreen from "@/components/ResultScreen";
 import { parsePriceBandSlug } from "@/lib/priceBands";
 import { RARITY_LABELS } from "@/lib/rarity";
 import AdBanner from "@/components/AdBanner";
+import { SITE_URL } from "@/lib/site";
 
 function dec(s: string) {
   try { return decodeURIComponent(s); } catch { return s; }
@@ -27,15 +28,22 @@ export async function generateMetadata({
     return { title: `${label} 送る相手を選ぶ | 誕生日プレゼント ガチャ` };
   }
   if (steps.length === 2) {
+    const recipient = dec(steps[1]);
+    const type = dec(steps[0]);
+    if (type === "all" && recipient !== "all") {
+      const title = `${recipient}への誕生日プレゼント｜予算${label}のおすすめ | 誕生日プレゼント ガチャ`;
+      const description = `${recipient}への誕生日プレゼントを予算${label}でお探しですか？気分や雰囲気から絞り込んで、ぴったりのプレゼントを見つけましょう。`;
+      return { title, description };
+    }
     return { title: `${label} 気分を選ぶ | 誕生日プレゼント ガチャ` };
   }
   if (steps.length === 4) {
     const itemName = dec(steps[3]);
     const prize = await fetchItemByName(itemName).catch(() => null);
-    if (!prize) return { title: "結果が見つかりませんでした | 誕生日プレゼント ガチャ" };
+    if (!prize) return { title: "結果が見つかりませんでした | 誕生日プレゼント ガチャ", robots: { index: false, follow: true } };
     const title = `${prize.name}（${RARITY_LABELS[prize.rarity]}）| 誕生日プレゼント ガチャ`;
     const description = prize.description || `誕生日プレゼントガチャで「${prize.name}」が出ました。`;
-    return { title, description, openGraph: { title, description } };
+    return { title, description, openGraph: { title, description }, robots: { index: false, follow: true } };
   }
   const typeVal = dec(steps[0]) === "all" ? "" : `${dec(steps[0])}の`;
   const recipientVal = dec(steps[1]) === "all" ? "" : `${dec(steps[1])}への`;
@@ -43,6 +51,7 @@ export async function generateMetadata({
   return {
     title: `${label} ${typeVal}${recipientVal}${moodVal}おすすめプレゼント | 誕生日プレゼント ガチャ`,
     description: `${label}でおすすめの誕生日プレゼント候補一覧です。`,
+    robots: { index: false, follow: true },
   };
 }
 
@@ -114,7 +123,35 @@ export default async function WizardStepsPage({
     const recipient = dec(steps[1]);
     const typeLabel = type === "all" ? "絞り込まない" : type;
     const recipientLabel = recipient === "all" ? "絞り込まない" : recipient;
-    const moodTags = await fetchItemMoods().catch(() => []);
+    const isRecipientPage = type === "all" && recipient !== "all";
+
+    const [moodTags, allRecipients] = await Promise.all([
+      fetchItemMoods().catch(() => []),
+      isRecipientPage ? fetchItemRecipients().catch(() => []) : Promise.resolve([]),
+    ]);
+
+    const h1 = isRecipientPage
+      ? `${recipientLabel}への誕生日プレゼント｜予算${label}のおすすめ`
+      : "気分を選ぶ";
+    const intro = isRecipientPage
+      ? `${recipientLabel}への誕生日プレゼントを予算${label}でお探しですか？ここから気分・雰囲気で絞り込むと、ぴったりのプレゼント候補が見つかります。予算内で喜ばれるギフトをガチャで楽しく決めましょう。`
+      : "どんな気分のプレゼントにしますか？";
+
+    const otherRecipients = allRecipients.filter((r) => r.name !== recipient);
+
+    const itemListJsonLd = isRecipientPage
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: h1,
+          itemListElement: moodTags.map((m, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: m.name,
+            url: `${SITE_URL}/price/${range}/all/${encodeURIComponent(recipient)}/${encodeURIComponent(m.name)}`,
+          })),
+        }
+      : null;
 
     return (
       <div className="min-h-screen bg-black text-white">
@@ -128,9 +165,15 @@ export default async function WizardStepsPage({
             { label: recipientLabel },
           ]}
         />
+        {itemListJsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+          />
+        )}
         <header>
-          <h1 className="text-2xl font-bold">気分を選ぶ</h1>
-          <p className="mt-1 text-sm text-gray-400">どんな気分のプレゼントにしますか？</p>
+          <h1 className="text-2xl font-bold">{h1}</h1>
+          <p className="mt-1 text-sm text-gray-400">{intro}</p>
         </header>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <li>
@@ -147,6 +190,24 @@ export default async function WizardStepsPage({
           ))}
         </ul>
         <AdBanner />
+
+        {isRecipientPage && otherRecipients.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold text-gray-400">他の相手への{label}プレゼント</h2>
+            <ul className="flex flex-wrap gap-2">
+              {otherRecipients.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/price/${range}/all/${encodeURIComponent(r.name)}`}
+                    className="rounded-full border border-gray-600 px-3 py-1 text-xs text-gray-300 hover:border-pink-400 hover:text-pink-300"
+                  >
+                    {r.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <Link href={`/price/${range}/${type}`} className="text-sm text-gray-400 hover:text-white">
           ← 送る相手を選び直す
@@ -188,6 +249,19 @@ export default async function WizardStepsPage({
       moodFilter,
     ].filter(Boolean);
 
+    const itemListJsonLd = items.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          itemListElement: items.map((item, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: item.name,
+            url: `${SITE_URL}/price/${range}/${encodeURIComponent(type)}/${encodeURIComponent(recipient)}/${encodeURIComponent(mood)}/${encodeURIComponent(item.name)}`,
+          })),
+        }
+      : null;
+
     return (
       <div className="min-h-screen bg-black text-white">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10">
@@ -201,6 +275,12 @@ export default async function WizardStepsPage({
             { label: moodLabel },
           ]}
         />
+        {itemListJsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+          />
+        )}
         <header>
           <h1 className="text-2xl font-bold">おすすめプレゼント</h1>
           <p className="mt-1 text-sm text-gray-400">

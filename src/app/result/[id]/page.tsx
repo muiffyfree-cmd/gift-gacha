@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { id } = await params;
   const prize = await fetchItemById(id).catch(() => null);
   if (!prize) {
-    return { title: "結果が見つかりませんでした | 誕生日プレゼント ガチャ" };
+    return { title: "結果が見つかりませんでした | 誕生日プレゼント ガチャ", robots: { index: false, follow: true } };
   }
   const title = `${prize.name}（${RARITY_LABELS[prize.rarity]}）が出ました！ | 誕生日プレゼント ガチャ`;
   const description = prize.description || `誕生日プレゼントガチャで「${prize.name}」が出ました。`;
@@ -21,6 +21,7 @@ export async function generateMetadata({
     title,
     description,
     openGraph: { title, description },
+    robots: { index: false, follow: true },
   };
 }
 

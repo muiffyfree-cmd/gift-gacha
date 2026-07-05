@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
-import { fetchItemTypes } from "@/lib/tags";
+import { fetchItemTypes, fetchItemRecipients } from "@/lib/tags";
 import { parsePriceBandSlug } from "@/lib/priceBands";
 import AdBanner from "@/components/AdBanner";
 
@@ -30,7 +30,10 @@ export default async function TypeSelectPage({
   const band = parsePriceBandSlug(range);
   if (!band) notFound();
 
-  const typeTags = await fetchItemTypes().catch(() => []);
+  const [typeTags, recipientTags] = await Promise.all([
+    fetchItemTypes().catch(() => []),
+    fetchItemRecipients().catch(() => []),
+  ]);
   const label = `¥${band.min.toLocaleString()}〜¥${band.max.toLocaleString()}`;
 
   return (
@@ -70,6 +73,24 @@ export default async function TypeSelectPage({
         </ul>
 
         <AdBanner />
+
+        {recipientTags.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold text-gray-400">誰へのプレゼントをお探しですか？</h2>
+            <ul className="flex flex-wrap gap-2">
+              {recipientTags.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/price/${range}/all/${encodeURIComponent(r.name)}`}
+                    className="rounded-full border border-gray-600 px-3 py-1 text-xs text-gray-300 hover:border-pink-400 hover:text-pink-300"
+                  >
+                    {r.name}への{label}プレゼント
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <Link href="/price" className="text-sm text-gray-400 hover:text-white">
           ← 他の価格帯を見る
