@@ -21,21 +21,22 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { range, steps } = await params;
   const band = parsePriceBandSlug(range);
-  if (!band) return { title: "価格帯から探す | 誕生日プレゼント ガチャ" };
+  if (!band) return { title: "誕生日プレゼントを探す｜誕プレガチャ" };
+  const priceLabel = `${band.min}〜${band.max}`;
   const label = `¥${band.min.toLocaleString()}〜¥${band.max.toLocaleString()}`;
 
   if (steps.length === 1) {
-    return { title: `${label} 送る相手を選ぶ | 誕生日プレゼント ガチャ` };
+    return { title: `誕生日プレゼント 予算${priceLabel}円｜誕プレガチャ` };
   }
   if (steps.length === 2) {
     const recipient = dec(steps[1]);
     const type = dec(steps[0]);
     if (type === "all" && recipient !== "all") {
-      const title = `${recipient}への誕生日プレゼント｜予算${label}のおすすめ | 誕生日プレゼント ガチャ`;
+      const title = `${recipient}への誕生日プレゼント 予算${priceLabel}円｜誕プレガチャ`;
       const description = `${recipient}への誕生日プレゼントを予算${label}でお探しですか？気分や雰囲気から絞り込んで、ぴったりのプレゼントを見つけましょう。`;
       return { title, description };
     }
-    return { title: `${label} 気分を選ぶ | 誕生日プレゼント ガチャ` };
+    return { title: `誕生日プレゼント 予算${priceLabel}円｜誕プレガチャ` };
   }
   if (steps.length === 4) {
     const itemName = dec(steps[3]);

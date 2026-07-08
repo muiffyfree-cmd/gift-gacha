@@ -13,11 +13,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { range } = await params;
   const band = parsePriceBandSlug(range);
-  if (!band) return { title: "価格帯から探す | 誕生日プレゼント ガチャ" };
-  const label = `¥${band.min.toLocaleString()}〜¥${band.max.toLocaleString()}`;
+  if (!band) return { title: "誕生日プレゼントを探す｜誕プレガチャ" };
+  const priceLabel = `${band.min}〜${band.max}`;
+  const displayLabel = `¥${band.min.toLocaleString()}〜¥${band.max.toLocaleString()}`;
   return {
-    title: `${label} 種類を選ぶ | 誕生日プレゼント ガチャ`,
-    description: `${label}の誕生日プレゼントを種類から絞り込めます。`,
+    title: `誕生日プレゼント 予算${priceLabel}円｜誕プレガチャ`,
+    description: `${displayLabel}の誕生日プレゼントを種類から絞り込めます。`,
   };
 }
 

@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import GachaApp from "@/components/GachaApp";
+
+export const metadata: Metadata = {
+  title: "誕生日プレゼントを探す｜誕プレガチャ",
+};
 
 export default function Home() {
   return (
