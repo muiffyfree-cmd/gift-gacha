@@ -5,7 +5,7 @@ import { getPriceBands } from "@/lib/priceBands";
 import AdBanner from "@/components/AdBanner";
 
 export const metadata: Metadata = {
-  title: "価格帯から探す | 誕生日プレゼント ガチャ",
+  title: "誕生日プレゼントを予算から探す｜誕プレガチャ",
   description: "予算別に誕生日プレゼントのおすすめ候補を一覧で紹介します。",
 };
 

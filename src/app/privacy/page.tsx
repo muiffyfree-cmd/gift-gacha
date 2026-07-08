@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー | 誕プレガチャ",
+  title: "プライバシーポリシー｜誕プレガチャ",
   description: "誕プレガチャのプライバシーポリシーページです。",
 };
 
