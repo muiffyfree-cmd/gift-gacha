@@ -8,6 +8,7 @@ type ArticleItemRow = {
   price: string | null;
   intro_text: string | null;
   affiliate_html: string | null;
+  purchase_url: string | null;
   sns_url: string | null;
   sort_order: number;
 };
@@ -32,6 +33,7 @@ function rowToArticleItem(row: ArticleItemRow): ArticleItem {
     price: row.price ?? undefined,
     introText: row.intro_text ?? undefined,
     affiliateHtml: row.affiliate_html ?? undefined,
+    purchaseUrl: row.purchase_url ?? undefined,
     snsUrl: row.sns_url ?? undefined,
     sortOrder: row.sort_order,
   };
@@ -57,6 +59,7 @@ export type ArticleItemInput = {
   price?: string;
   introText?: string;
   affiliateHtml?: string;
+  purchaseUrl?: string;
   snsUrl?: string;
   sortOrder: number;
 };
@@ -127,6 +130,7 @@ async function replaceArticleItems(articleId: string, items: ArticleItemInput[])
       price: item.price ?? null,
       intro_text: item.introText ?? null,
       affiliate_html: item.affiliateHtml ?? null,
+      purchase_url: item.purchaseUrl ?? null,
       sns_url: item.snsUrl ?? null,
       sort_order: item.sortOrder,
     }))

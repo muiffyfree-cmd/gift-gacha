@@ -4,6 +4,7 @@ export type ArticleItem = {
   price?: string;
   introText?: string;
   affiliateHtml?: string;
+  purchaseUrl?: string;
   snsUrl?: string;
   sortOrder: number;
 };

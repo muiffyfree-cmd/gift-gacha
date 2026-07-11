@@ -51,11 +51,12 @@ type ArticleItemFormRow = {
   price: string;
   introText: string;
   affiliateHtml: string;
+  purchaseUrl: string;
   snsUrl: string;
 };
 
 function emptyArticleItemRow(): ArticleItemFormRow {
-  return { name: "", price: "", introText: "", affiliateHtml: "", snsUrl: "" };
+  return { name: "", price: "", introText: "", affiliateHtml: "", purchaseUrl: "", snsUrl: "" };
 }
 
 function parsePriceText(text: string): number | undefined {
@@ -442,6 +443,7 @@ export default function AdminApp() {
         price: item.price ?? "",
         introText: item.introText ?? "",
         affiliateHtml: item.affiliateHtml ?? "",
+        purchaseUrl: item.purchaseUrl ?? "",
         snsUrl: item.snsUrl ?? "",
       })),
     });
@@ -476,7 +478,8 @@ export default function AdminApp() {
           name: record["商品名"] ?? "",
           price: record["金額"] ?? "",
           introText: record["商品説明"] ?? "",
-          affiliateHtml: "",
+          affiliateHtml: record["HTML"] ?? record["アフィリエイトHTML"] ?? "",
+          purchaseUrl: record["購入URL"] ?? record["URL"] ?? "",
           snsUrl: "",
         }));
         setArticleForm((f) => ({
@@ -515,7 +518,7 @@ export default function AdminApp() {
 
   function updateArticleItemField(
     index: number,
-    field: "name" | "price" | "introText" | "affiliateHtml" | "snsUrl",
+    field: "name" | "price" | "introText" | "affiliateHtml" | "purchaseUrl" | "snsUrl",
     value: string
   ) {
     setArticleForm((f) => ({
@@ -538,6 +541,7 @@ export default function AdminApp() {
         price: row.price.trim() || undefined,
         introText: row.introText.trim() || undefined,
         affiliateHtml: row.affiliateHtml.trim() || undefined,
+        purchaseUrl: row.purchaseUrl.trim() || undefined,
         snsUrl: row.snsUrl.trim() || undefined,
         sortOrder: i,
       })),
@@ -582,6 +586,7 @@ export default function AdminApp() {
           snsUrl: item.snsUrl,
           introText: item.introText,
           affiliateHtml: item.affiliateHtml,
+          purchaseUrl: item.purchaseUrl,
           sortOrder: i,
         })),
       });
@@ -1522,7 +1527,7 @@ export default function AdminApp() {
                 </label>
 
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
-                  商品CSVを読み込む（商品名・金額・商品説明の列を使用）
+                  商品CSVを読み込む（商品名・金額・商品説明・HTML（アフィリエイトHTML）・購入URLの列を使用）
                   <label className="inline-block w-fit cursor-pointer rounded bg-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-300">
                     CSVファイルを選択
                     <input
@@ -1628,6 +1633,16 @@ export default function AdminApp() {
                             />
                           </div>
                         )}
+                      </label>
+                      <label className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
+                        購入URL（任意・「購入する」ボタン用）
+                        <input
+                          type="url"
+                          value={row.purchaseUrl}
+                          onChange={(e) => updateArticleItemField(index, "purchaseUrl", e.target.value)}
+                          placeholder="https://..."
+                          className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                        />
                       </label>
                     </li>
                   ))}

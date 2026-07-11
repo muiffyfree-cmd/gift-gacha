@@ -69,6 +69,23 @@ export default async function ArticlePage({
                 />
               )}
 
+              {articleItem.purchaseUrl ? (
+                <a
+                  href={articleItem.purchaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="block w-full rounded-full bg-amber-500 px-8 py-3 text-center text-base font-bold text-white shadow hover:bg-amber-600"
+                >
+                  🛒 購入する
+                </a>
+              ) : (
+                articleItem.affiliateHtml && (
+                  <p className="text-center text-sm text-gray-500">
+                    写真を押すと購入ページに飛べます
+                  </p>
+                )
+              )}
+
               {articleItem.snsUrl && <SnsEmbed url={articleItem.snsUrl} />}
 
               {articleItem.introText && (
