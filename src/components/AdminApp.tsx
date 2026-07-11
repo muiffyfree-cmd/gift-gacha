@@ -53,10 +53,23 @@ type ArticleItemFormRow = {
   affiliateHtml: string;
   purchaseUrl: string;
   snsUrl: string;
+  type?: string;
+  recipients: string[];
+  moods: string[];
 };
 
 function emptyArticleItemRow(): ArticleItemFormRow {
-  return { name: "", price: "", introText: "", affiliateHtml: "", purchaseUrl: "", snsUrl: "" };
+  return {
+    name: "",
+    price: "",
+    introText: "",
+    affiliateHtml: "",
+    purchaseUrl: "",
+    snsUrl: "",
+    type: undefined,
+    recipients: [],
+    moods: [],
+  };
 }
 
 function parsePriceText(text: string): number | undefined {
@@ -75,7 +88,13 @@ type ArticleFormState = {
 };
 
 function emptyArticleForm(): ArticleFormState {
-  return { title: "", slug: "", description: "", published: false, items: [] };
+  return {
+    title: "",
+    slug: "",
+    description: "",
+    published: false,
+    items: [],
+  };
 }
 
 function emptyForm(): Omit<Prize, "id"> {
@@ -445,6 +464,9 @@ export default function AdminApp() {
         affiliateHtml: item.affiliateHtml ?? "",
         purchaseUrl: item.purchaseUrl ?? "",
         snsUrl: item.snsUrl ?? "",
+        type: item.type,
+        recipients: item.recipients ?? [],
+        moods: item.moods ?? [],
       })),
     });
     setArticleSlugTouched(true);
@@ -465,6 +487,41 @@ export default function AdminApp() {
     }));
   }
 
+  function selectArticleItemType(index: number, name: string) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) =>
+        i === index ? { ...row, type: row.type === name ? undefined : name } : row
+      ),
+    }));
+  }
+
+  function toggleArticleItemRecipient(index: number, name: string) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) => {
+        if (i !== index) return row;
+        const next = row.recipients.includes(name)
+          ? row.recipients.filter((r) => r !== name)
+          : [...row.recipients, name];
+        return { ...row, recipients: next };
+      }),
+    }));
+  }
+
+  function toggleArticleItemMood(index: number, name: string) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) => {
+        if (i !== index) return row;
+        const next = row.moods.includes(name)
+          ? row.moods.filter((m) => m !== name)
+          : [...row.moods, name];
+        return { ...row, moods: next };
+      }),
+    }));
+  }
+
   function handleArticleCsvUpload(file: File) {
     const reader = new FileReader();
     reader.onload = () => {
@@ -481,6 +538,9 @@ export default function AdminApp() {
           affiliateHtml: record["HTML"] ?? record["アフィリエイトHTML"] ?? "",
           purchaseUrl: record["購入URL"] ?? record["URL"] ?? "",
           snsUrl: "",
+          type: undefined,
+          recipients: [],
+          moods: [],
         }));
         setArticleForm((f) => ({
           ...f,
@@ -543,6 +603,9 @@ export default function AdminApp() {
         affiliateHtml: row.affiliateHtml.trim() || undefined,
         purchaseUrl: row.purchaseUrl.trim() || undefined,
         snsUrl: row.snsUrl.trim() || undefined,
+        type: row.type,
+        recipients: row.recipients,
+        moods: row.moods,
         sortOrder: i,
       })),
     };
@@ -587,6 +650,9 @@ export default function AdminApp() {
           introText: item.introText,
           affiliateHtml: item.affiliateHtml,
           purchaseUrl: item.purchaseUrl,
+          type: item.type,
+          recipients: item.recipients,
+          moods: item.moods,
           sortOrder: i,
         })),
       });
@@ -1644,6 +1710,75 @@ export default function AdminApp() {
                           className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
                         />
                       </label>
+
+                      <div className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
+                        種類（任意・1つ選択）
+                        <div className="flex flex-wrap gap-1">
+                          {itemTypes.map((t) => {
+                            const selected = row.type === t.name;
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => selectArticleItemType(index, t.name)}
+                                className={`rounded-full border px-2 py-0.5 text-xs font-medium transition ${
+                                  selected
+                                    ? "border-pink-600 bg-pink-600 text-white"
+                                    : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                                }`}
+                              >
+                                {t.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
+                        相手（任意・複数選択可）
+                        <div className="flex flex-wrap gap-1">
+                          {itemRecipients.map((r) => {
+                            const selected = row.recipients.includes(r.name);
+                            return (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => toggleArticleItemRecipient(index, r.name)}
+                                className={`rounded-full border px-2 py-0.5 text-xs font-medium transition ${
+                                  selected
+                                    ? "border-pink-600 bg-pink-600 text-white"
+                                    : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                                }`}
+                              >
+                                {r.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
+                        気分（任意・複数選択可）
+                        <div className="flex flex-wrap gap-1">
+                          {itemMoods.map((m) => {
+                            const selected = row.moods.includes(m.name);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => toggleArticleItemMood(index, m.name)}
+                                className={`rounded-full border px-2 py-0.5 text-xs font-medium transition ${
+                                  selected
+                                    ? "border-pink-600 bg-pink-600 text-white"
+                                    : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
+                                }`}
+                              >
+                                {m.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -6,6 +6,9 @@ export type ArticleItem = {
   affiliateHtml?: string;
   purchaseUrl?: string;
   snsUrl?: string;
+  type?: string;
+  recipients?: string[];
+  moods?: string[];
   sortOrder: number;
 };
 

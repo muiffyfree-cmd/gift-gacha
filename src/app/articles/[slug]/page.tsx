@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import SnsEmbed from "@/components/SnsEmbed";
+import AdBanner from "@/components/AdBanner";
 import { fetchArticleBySlug } from "@/lib/articles";
 
 export async function generateMetadata({
@@ -51,9 +53,9 @@ export default async function ArticlePage({
         </header>
 
         <ul className="flex flex-col gap-6">
-          {article.items.map((articleItem) => (
+          {article.items.map((articleItem, index) => (
+            <Fragment key={articleItem.id}>
             <li
-              key={articleItem.id}
               className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-gray-800"
             >
               <p className="text-center text-2xl font-bold">{articleItem.name}</p>
@@ -62,6 +64,44 @@ export default async function ArticlePage({
                   {articleItem.price}
                 </p>
               )}
+
+              {(articleItem.type ||
+                (articleItem.recipients && articleItem.recipients.length > 0) ||
+                (articleItem.moods && articleItem.moods.length > 0)) && (
+                <ul className="flex flex-wrap justify-center gap-2">
+                  {articleItem.type && (
+                    <li>
+                      <Link
+                        href={`/price/type/${encodeURIComponent(articleItem.type)}`}
+                        className="rounded-full bg-blue-100 px-3 py-1 text-xs text-blue-700 hover:bg-blue-200"
+                      >
+                        種類: {articleItem.type}
+                      </Link>
+                    </li>
+                  )}
+                  {articleItem.recipients?.map((r) => (
+                    <li key={r}>
+                      <Link
+                        href={`/price/recipient/${encodeURIComponent(r)}`}
+                        className="rounded-full bg-pink-100 px-3 py-1 text-xs text-pink-700 hover:bg-pink-200"
+                      >
+                        相手: {r}
+                      </Link>
+                    </li>
+                  ))}
+                  {articleItem.moods?.map((m) => (
+                    <li key={m}>
+                      <Link
+                        href={`/price/mood/${encodeURIComponent(m)}`}
+                        className="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700 hover:bg-amber-200"
+                      >
+                        気分: {m}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               {articleItem.affiliateHtml && (
                 <div
                   className="flex justify-center [&_img]:mx-auto"
@@ -94,6 +134,12 @@ export default async function ArticlePage({
                 </p>
               )}
             </li>
+            {(index === 1 || index === 3) && (
+              <li>
+                <AdBanner />
+              </li>
+            )}
+            </Fragment>
           ))}
         </ul>
 

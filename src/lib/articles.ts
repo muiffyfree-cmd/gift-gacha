@@ -10,6 +10,9 @@ type ArticleItemRow = {
   affiliate_html: string | null;
   purchase_url: string | null;
   sns_url: string | null;
+  type: string | null;
+  recipients: string[] | null;
+  moods: string[] | null;
   sort_order: number;
 };
 
@@ -35,6 +38,9 @@ function rowToArticleItem(row: ArticleItemRow): ArticleItem {
     affiliateHtml: row.affiliate_html ?? undefined,
     purchaseUrl: row.purchase_url ?? undefined,
     snsUrl: row.sns_url ?? undefined,
+    type: row.type ?? undefined,
+    recipients: row.recipients ?? undefined,
+    moods: row.moods ?? undefined,
     sortOrder: row.sort_order,
   };
 }
@@ -61,6 +67,9 @@ export type ArticleItemInput = {
   affiliateHtml?: string;
   purchaseUrl?: string;
   snsUrl?: string;
+  type?: string;
+  recipients?: string[];
+  moods?: string[];
   sortOrder: number;
 };
 
@@ -132,6 +141,9 @@ async function replaceArticleItems(articleId: string, items: ArticleItemInput[])
       affiliate_html: item.affiliateHtml ?? null,
       purchase_url: item.purchaseUrl ?? null,
       sns_url: item.snsUrl ?? null,
+      type: item.type ?? null,
+      recipients: item.recipients ?? [],
+      moods: item.moods ?? [],
       sort_order: item.sortOrder,
     }))
   );

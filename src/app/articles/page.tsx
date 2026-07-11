@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
+import AdBanner from "@/components/AdBanner";
 import { fetchArticles } from "@/lib/articles";
 
 export const metadata: Metadata = {
@@ -62,6 +63,8 @@ export default async function ArticlesIndexPage({
             ))}
           </ul>
         )}
+
+        <AdBanner />
 
         <Link href="/" className="text-sm text-gray-400 hover:text-white">
           ← ホームに戻る
