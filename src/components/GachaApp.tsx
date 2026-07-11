@@ -113,14 +113,6 @@ export default function GachaApp() {
       <IntroBanner />
 
       <div className="relative mx-auto w-full max-w-xl px-4 pt-6">
-        <section className="rounded-xl border border-gray-200 bg-white/80 p-4 text-center">
-          <Link href="/price" className="inline-block text-sm font-semibold text-pink-600 hover:underline">
-            価格帯・送る相手・気分からおすすめを探す →
-          </Link>
-        </section>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
         <ul className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 sm:text-sm">
           {RARITY_OPTIONS.map((rarity) => {
             const total = RARITY_OPTIONS.reduce((sum, r) => sum + rarityWeights[r], 0);
@@ -154,6 +146,57 @@ export default function GachaApp() {
         >
           {isSpinning ? "" : "回す"}
         </button>
+      </div>
+
+      <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+        <section className="rounded-xl border border-gray-200 bg-white/80 p-4 text-center">
+          <Link href="/price" className="inline-block text-sm font-semibold text-pink-600 hover:underline">
+            価格帯・送る相手・気分からおすすめを探す →
+          </Link>
+        </section>
+      </div>
+
+      <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+        <section className="rounded-xl border border-gray-200 bg-white/80 p-4 text-center">
+          <Link href="/articles" className="inline-block text-sm font-semibold text-pink-600 hover:underline">
+            SNSで紹介した商品まとめを見る →
+          </Link>
+        </section>
+      </div>
+
+      <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+        <div className="flex items-center justify-center gap-6">
+          <a
+            href="https://www.instagram.com/present_gacha_muiffy/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+          >
+            <Image
+              src="/instagram.jpg"
+              alt="Instagram"
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+          </a>
+          <a
+            href="https://www.youtube.com/channel/UCejvlkQzBs6vTFI-wzTn57g"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="YouTube"
+          >
+            <Image src="/youtube.png" alt="YouTube" width={40} height={40} className="rounded-full" />
+          </a>
+          <a
+            href="https://www.tiktok.com/@muiffy_presentgacha"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="TikTok"
+          >
+            <Image src="/tiktok.webp" alt="TikTok" width={40} height={40} className="rounded-full" />
+          </a>
+        </div>
       </div>
 
       <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-10">

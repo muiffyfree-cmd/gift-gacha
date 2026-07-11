@@ -53,12 +53,11 @@ export async function fetchItems(): Promise<Prize[]> {
 }
 
 export async function fetchItemsByPriceRange(min: number, max: number): Promise<Prize[]> {
-  const { data, error } = await supabase
-    .from("items")
-    .select("*")
-    .gte("price", min)
-    .lte("price", max)
-    .order("price", { ascending: true });
+  let query = supabase.from("items").select("*").gte("price", min);
+  if (Number.isFinite(max)) {
+    query = query.lte("price", max);
+  }
+  const { data, error } = await query.order("price", { ascending: true });
   if (error) throw error;
   return (data as ItemRow[]).map(rowToPrize);
 }

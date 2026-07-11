@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Prize, Rarity } from "@/types/gacha";
+import type { Article, ArticleItem } from "@/types/article";
 import {
   exportAllData,
   importAllData,
@@ -19,6 +20,15 @@ import {
   type VisitStats,
 } from "@/lib/storage";
 import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
+import {
+  createArticle,
+  deleteArticle,
+  fetchAllArticlesForAdmin,
+  updateArticle,
+  type ArticleInput,
+} from "@/lib/articles";
+import { slugify } from "@/lib/slug";
+import { parseCsvRecords } from "@/lib/csv";
 import { checkIsAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { uploadEffectVideo } from "@/lib/uploads";
@@ -35,6 +45,37 @@ import {
   type Tag,
 } from "@/lib/tags";
 import { RARITY_BADGE_CLASSES, RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
+
+type ArticleItemFormRow = {
+  name: string;
+  price: string;
+  introText: string;
+  affiliateHtml: string;
+  snsUrl: string;
+};
+
+function emptyArticleItemRow(): ArticleItemFormRow {
+  return { name: "", price: "", introText: "", affiliateHtml: "", snsUrl: "" };
+}
+
+function parsePriceText(text: string): number | undefined {
+  const match = text.replace(/,/g, "").match(/\d+/);
+  if (!match) return undefined;
+  const value = Number(match[0]);
+  return Number.isNaN(value) ? undefined : value;
+}
+
+type ArticleFormState = {
+  title: string;
+  slug: string;
+  description: string;
+  published: boolean;
+  items: ArticleItemFormRow[];
+};
+
+function emptyArticleForm(): ArticleFormState {
+  return { title: "", slug: "", description: "", published: false, items: [] };
+}
 
 function emptyForm(): Omit<Prize, "id"> {
   return {
@@ -70,6 +111,15 @@ export default function AdminApp() {
   const [newRecipientName, setNewRecipientName] = useState("");
   const [newMoodName, setNewMoodName] = useState("");
   const [tagsError, setTagsError] = useState("");
+
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [articlesError, setArticlesError] = useState("");
+  const [articleEditingId, setArticleEditingId] = useState<string | null>(null);
+  const [articleForm, setArticleForm] = useState<ArticleFormState>(emptyArticleForm());
+  const [articleSlugTouched, setArticleSlugTouched] = useState(false);
+  const [articleCsvError, setArticleCsvError] = useState("");
+  const [itemGachaRarity, setItemGachaRarityState] = useState<Record<string, Rarity>>({});
+  const [gachaConvertMessage, setGachaConvertMessage] = useState("");
 
   const [authLoading, setAuthLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
@@ -111,6 +161,9 @@ export default function AdminApp() {
     fetchItemTypes().then(setItemTypes).catch(() => {});
     fetchItemRecipients().then(setItemRecipients).catch(() => {});
     fetchItemMoods().then(setItemMoods).catch(() => {});
+    fetchAllArticlesForAdmin()
+      .then(setArticles)
+      .catch((err) => setArticlesError(err instanceof Error ? err.message : "記事一覧の取得に失敗しました。"));
   }, [session, isAdmin]);
 
   async function handleAddType() {
@@ -367,6 +420,236 @@ export default function AdminApp() {
       setPrizesError("");
     } catch (err) {
       setPrizesError(err instanceof Error ? err.message : "削除に失敗しました。");
+    }
+  }
+
+  function startAddArticle() {
+    setArticleEditingId("new");
+    setArticleForm(emptyArticleForm());
+    setArticleSlugTouched(false);
+    setArticleCsvError("");
+  }
+
+  function startEditArticle(article: Article) {
+    setArticleEditingId(article.id);
+    setArticleForm({
+      title: article.title,
+      slug: article.slug,
+      description: article.description ?? "",
+      published: article.published,
+      items: article.items.map((item) => ({
+        name: item.name,
+        price: item.price ?? "",
+        introText: item.introText ?? "",
+        affiliateHtml: item.affiliateHtml ?? "",
+        snsUrl: item.snsUrl ?? "",
+      })),
+    });
+    setArticleSlugTouched(true);
+    setArticleCsvError("");
+  }
+
+  function cancelArticleEdit() {
+    setArticleEditingId(null);
+    setArticleForm(emptyArticleForm());
+    setArticleSlugTouched(false);
+  }
+
+  function handleArticleTitleChange(value: string) {
+    setArticleForm((f) => ({
+      ...f,
+      title: value,
+      slug: articleSlugTouched ? f.slug : slugify(value),
+    }));
+  }
+
+  function handleArticleCsvUpload(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const records = parseCsvRecords(String(reader.result));
+        if (records.length === 0) {
+          setArticleCsvError("CSVから商品を読み取れませんでした。");
+          return;
+        }
+        const items: ArticleItemFormRow[] = records.map((record) => ({
+          name: record["商品名"] ?? "",
+          price: record["金額"] ?? "",
+          introText: record["商品説明"] ?? "",
+          affiliateHtml: "",
+          snsUrl: "",
+        }));
+        setArticleForm((f) => ({
+          ...f,
+          items,
+          description:
+            f.description.trim() === ""
+              ? `${items.map((row) => row.name).join("・")} をSNSで紹介しました。`
+              : f.description,
+        }));
+        setArticleCsvError("");
+      } catch {
+        setArticleCsvError("CSVの読み込みに失敗しました。形式を確認してください。");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function addBlankArticleItemRow() {
+    setArticleForm((f) => ({ ...f, items: [...f.items, emptyArticleItemRow()] }));
+  }
+
+  function removeProductFromArticle(index: number) {
+    setArticleForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== index) }));
+  }
+
+  function moveProductInArticle(index: number, direction: -1 | 1) {
+    setArticleForm((f) => {
+      const target = index + direction;
+      if (target < 0 || target >= f.items.length) return f;
+      const items = [...f.items];
+      [items[index], items[target]] = [items[target], items[index]];
+      return { ...f, items };
+    });
+  }
+
+  function updateArticleItemField(
+    index: number,
+    field: "name" | "price" | "introText" | "affiliateHtml" | "snsUrl",
+    value: string
+  ) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    }));
+  }
+
+  async function handleSaveArticle() {
+    const title = articleForm.title.trim();
+    const slug = articleForm.slug.trim();
+    if (!title || !slug || articleForm.items.length === 0) return;
+    const payload: ArticleInput = {
+      title,
+      slug,
+      description: articleForm.description.trim() || undefined,
+      published: articleForm.published,
+      items: articleForm.items.map((row, i) => ({
+        name: row.name.trim(),
+        price: row.price.trim() || undefined,
+        introText: row.introText.trim() || undefined,
+        affiliateHtml: row.affiliateHtml.trim() || undefined,
+        snsUrl: row.snsUrl.trim() || undefined,
+        sortOrder: i,
+      })),
+    };
+
+    try {
+      if (articleEditingId === "new") {
+        const created = await createArticle(payload);
+        setArticles((prev) => [created, ...prev]);
+      } else if (articleEditingId) {
+        const updated = await updateArticle(articleEditingId, payload);
+        setArticles((prev) => prev.map((a) => (a.id === articleEditingId ? updated : a)));
+      }
+      setArticlesError("");
+      cancelArticleEdit();
+    } catch (err) {
+      setArticlesError(err instanceof Error ? err.message : "記事の保存に失敗しました。");
+    }
+  }
+
+  async function handleDeleteArticle(id: string) {
+    try {
+      await deleteArticle(id);
+      setArticles((prev) => prev.filter((a) => a.id !== id));
+      if (articleEditingId === id) cancelArticleEdit();
+      setArticlesError("");
+    } catch (err) {
+      setArticlesError(err instanceof Error ? err.message : "記事の削除に失敗しました。");
+    }
+  }
+
+  async function handleToggleArticlePublished(article: Article) {
+    try {
+      const updated = await updateArticle(article.id, {
+        title: article.title,
+        slug: article.slug,
+        description: article.description,
+        published: !article.published,
+        items: article.items.map((item, i) => ({
+          name: item.name,
+          price: item.price,
+          snsUrl: item.snsUrl,
+          introText: item.introText,
+          affiliateHtml: item.affiliateHtml,
+          sortOrder: i,
+        })),
+      });
+      setArticles((prev) => prev.map((a) => (a.id === article.id ? updated : a)));
+    } catch (err) {
+      setArticlesError(err instanceof Error ? err.message : "公開状態の更新に失敗しました。");
+    }
+  }
+
+  function getItemGachaRarity(itemId: string): Rarity {
+    return itemGachaRarity[itemId] ?? "N";
+  }
+
+  function setItemGachaRarity(itemId: string, rarity: Rarity) {
+    setItemGachaRarityState((prev) => ({ ...prev, [itemId]: rarity }));
+  }
+
+  async function handleAddArticleItemToGacha(item: ArticleItem) {
+    if (!item.name.trim()) return;
+    if (prizes.some((p) => p.name === item.name)) {
+      setGachaConvertMessage(`「${item.name}」は既にガチャ候補に存在するため追加しませんでした。`);
+      return;
+    }
+    try {
+      const created = await createItem({
+        name: item.name,
+        rarity: getItemGachaRarity(item.id),
+        price: item.price ? parsePriceText(item.price) : undefined,
+        description: item.introText,
+        affiliateHtml: item.affiliateHtml,
+      });
+      setPrizes((prev) => [...prev, created]);
+      setGachaConvertMessage(`「${item.name}」をガチャ景品に追加しました。`);
+    } catch (err) {
+      setGachaConvertMessage(
+        err instanceof Error ? err.message : "ガチャ景品への追加に失敗しました。"
+      );
+    }
+  }
+
+  async function handleAddAllArticleItemsToGacha(article: Article) {
+    const existingNames = new Set(prizes.map((p) => p.name));
+    const toCreate = article.items.filter(
+      (item) => item.name.trim() !== "" && !existingNames.has(item.name)
+    );
+    const skipped = article.items.length - toCreate.length;
+    try {
+      const created = await Promise.all(
+        toCreate.map((item) =>
+          createItem({
+            name: item.name,
+            rarity: getItemGachaRarity(item.id),
+            price: item.price ? parsePriceText(item.price) : undefined,
+            description: item.introText,
+            affiliateHtml: item.affiliateHtml,
+          })
+        )
+      );
+      setPrizes((prev) => [...prev, ...created]);
+      setGachaConvertMessage(
+        `「${article.title}」の商品を${created.length}件ガチャ景品に追加しました。${
+          skipped > 0 ? `(${skipped}件は既存の商品名と重複のためスキップ)` : ""
+        }`
+      );
+    } catch (err) {
+      setGachaConvertMessage(
+        err instanceof Error ? err.message : "ガチャ景品への追加に失敗しました。"
+      );
     }
   }
 
@@ -1069,6 +1352,318 @@ export default function AdminApp() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-700">SNS紹介記事管理</h2>
+          {articleEditingId === null && (
+            <button
+              onClick={startAddArticle}
+              className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
+            >
+              + 新規記事
+            </button>
+          )}
+        </div>
+
+        {articlesError && <p className="mb-2 text-sm text-red-600">{articlesError}</p>}
+        {gachaConvertMessage && (
+          <p className="mb-2 text-sm text-gray-600">{gachaConvertMessage}</p>
+        )}
+
+        {articles.length === 0 && articleEditingId === null && !articlesError && (
+          <p className="text-sm text-gray-400">記事がまだありません。</p>
+        )}
+
+        <ul className="flex flex-col gap-2">
+          {articles.map((article) => (
+            <li
+              key={article.id}
+              className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-1 items-center gap-3 overflow-hidden">
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      article.published ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {article.published ? "公開中" : "下書き"}
+                  </span>
+                  <span className="truncate font-medium text-gray-800">{article.title}</span>
+                  <span className="shrink-0 text-xs text-gray-400">/articles/{article.slug}</span>
+                  <span className="shrink-0 text-xs text-gray-500">{article.items.length}商品</span>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => handleToggleArticlePublished(article)}
+                    className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    {article.published ? "非公開にする" : "公開する"}
+                  </button>
+                  <button
+                    onClick={() => startEditArticle(article)}
+                    className="rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    編集
+                  </button>
+                  <button
+                    onClick={() => handleDeleteArticle(article.id)}
+                    className="rounded bg-red-100 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-200"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+              {article.items.length > 0 && (
+                <div className="flex flex-col gap-1 border-t border-gray-200 pt-2">
+                  <span className="text-xs text-gray-500">
+                    この記事の商品をガチャ景品に追加（商品ごとにレアリティを選択）：
+                  </span>
+                  <ul className="flex flex-col gap-1">
+                    {article.items.map((item) => {
+                      const alreadyAdded = prizes.some((p) => p.name === item.name);
+                      return (
+                        <li
+                          key={item.id}
+                          className="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-1"
+                        >
+                          <span className="flex-1 truncate text-xs text-gray-700">{item.name}</span>
+                          <select
+                            value={getItemGachaRarity(item.id)}
+                            onChange={(e) => setItemGachaRarity(item.id, e.target.value as Rarity)}
+                            disabled={alreadyAdded}
+                            className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none disabled:opacity-50"
+                          >
+                            {RARITY_OPTIONS.map((r) => (
+                              <option key={r} value={r}>
+                                {RARITY_LABELS[r]}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleAddArticleItemToGacha(item)}
+                            disabled={alreadyAdded}
+                            className="shrink-0 rounded bg-pink-600 px-2 py-1 text-xs font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                          >
+                            {alreadyAdded ? "追加済み" : "追加"}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button
+                    onClick={() => handleAddAllArticleItemsToGacha(article)}
+                    className="w-fit rounded bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    未追加の商品をまとめて追加
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        {articleEditingId !== null && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={cancelArticleEdit}
+          >
+            <section
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-pink-300 bg-pink-50 p-4 shadow-xl"
+            >
+              <h2 className="mb-3 font-semibold text-gray-700">
+                {articleEditingId === "new" ? "新規記事の作成" : "記事の編集"}
+              </h2>
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  タイトル
+                  <input
+                    type="text"
+                    value={articleForm.title}
+                    onChange={(e) => handleArticleTitleChange(e.target.value)}
+                    placeholder="例: 今週SNSで紹介したプレゼント特集"
+                    className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  URLスラッグ（/articles/以下）
+                  <input
+                    type="text"
+                    value={articleForm.slug}
+                    onChange={(e) => {
+                      setArticleSlugTouched(true);
+                      setArticleForm((f) => ({ ...f, slug: e.target.value }));
+                    }}
+                    className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm text-gray-600">
+                  概要（一覧・meta descriptionに使用）
+                  <textarea
+                    value={articleForm.description}
+                    onChange={(e) => setArticleForm((f) => ({ ...f, description: e.target.value }))}
+                    rows={2}
+                    className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                  />
+                </label>
+
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={articleForm.published}
+                    onChange={(e) => setArticleForm((f) => ({ ...f, published: e.target.checked }))}
+                  />
+                  公開する
+                </label>
+
+                <div className="flex flex-col gap-1 text-sm text-gray-600">
+                  商品CSVを読み込む（商品名・金額・商品説明の列を使用）
+                  <label className="inline-block w-fit cursor-pointer rounded bg-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-300">
+                    CSVファイルを選択
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleArticleCsvUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {articleCsvError && <p className="text-xs text-red-600">{articleCsvError}</p>}
+                </div>
+
+                <ul className="flex flex-col gap-3">
+                  {articleForm.items.map((row, index) => (
+                    <li key={index} className="rounded-lg border border-gray-200 bg-white p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-gray-500">商品 {index + 1}</span>
+                        <div className="flex shrink-0 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveProductInArticle(index, -1)}
+                            disabled={index === 0}
+                            className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-300 disabled:opacity-40"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveProductInArticle(index, 1)}
+                            disabled={index === articleForm.items.length - 1}
+                            className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-300 disabled:opacity-40"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeProductFromArticle(index)}
+                            className="rounded bg-red-100 px-2 py-1 text-xs text-red-600 hover:bg-red-200"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mb-2 flex gap-2">
+                        <label className="flex flex-1 flex-col gap-1 text-xs text-gray-600">
+                          商品名
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => updateArticleItemField(index, "name", e.target.value)}
+                            className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                          />
+                        </label>
+                        <label className="flex w-28 shrink-0 flex-col gap-1 text-xs text-gray-600">
+                          金額
+                          <input
+                            type="text"
+                            value={row.price}
+                            onChange={(e) => updateArticleItemField(index, "price", e.target.value)}
+                            placeholder="2,200円"
+                            className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                          />
+                        </label>
+                      </div>
+                      <label className="mb-2 flex flex-col gap-1 text-xs text-gray-600">
+                        SNS投稿URL（X/Instagram）
+                        <input
+                          type="url"
+                          value={row.snsUrl}
+                          onChange={(e) => updateArticleItemField(index, "snsUrl", e.target.value)}
+                          placeholder="https://x.com/..."
+                          className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                        />
+                      </label>
+                      <label className="mb-2 flex flex-col gap-1 text-xs text-gray-600">
+                        紹介文
+                        <textarea
+                          value={row.introText}
+                          onChange={(e) => updateArticleItemField(index, "introText", e.target.value)}
+                          rows={3}
+                          className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-gray-600">
+                        アフィリエイト用HTML（リンク+画像のHTMLを貼り付け）
+                        <textarea
+                          value={row.affiliateHtml}
+                          onChange={(e) => updateArticleItemField(index, "affiliateHtml", e.target.value)}
+                          placeholder='<a href="..."><img src="..." ...></a>'
+                          rows={4}
+                          className="rounded border border-gray-300 px-2 py-1 font-mono text-xs focus:border-pink-400 focus:outline-none"
+                        />
+                        {row.affiliateHtml && (
+                          <div className="mt-1">
+                            <p className="mb-1 text-xs text-gray-400">プレビュー：</p>
+                            <div
+                              className="inline-block"
+                              dangerouslySetInnerHTML={{ __html: row.affiliateHtml }}
+                            />
+                          </div>
+                        )}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={addBlankArticleItemRow}
+                  className="w-fit rounded bg-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                >
+                  + 商品欄を手動で追加
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveArticle}
+                    disabled={
+                      !articleForm.title.trim() ||
+                      !articleForm.slug.trim() ||
+                      articleForm.items.length === 0
+                    }
+                    className="rounded bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  >
+                    保存
+                  </button>
+                  <button
+                    onClick={cancelArticleEdit}
+                    className="rounded bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
       </section>
     </div>
   );

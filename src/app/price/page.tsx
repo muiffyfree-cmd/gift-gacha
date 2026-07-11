@@ -9,6 +9,18 @@ export const metadata: Metadata = {
   description: "予算別に誕生日プレゼントのおすすめ候補を一覧で紹介します。",
 };
 
+const PRICE_INTRO_TEXT = `実は、プレゼントって「誰に贈るか」「どんな相手か」で、ちょうどいい金額帯が変わってくるんだ。下の価格帯ごとにおすすめのシチュエーションをまとめたから、相手との関係に合わせて選んでみてね。
+¥0〜¥1,000
+ちょっとした日頃の感謝を伝えたいときに。気軽に渡せて、相手にも気を遣わせないさりげないプレゼントが揃ってるよ。
+¥1,000〜¥2,000
+お返しや、付き合いで用意しなきゃってときに。安っぽく見えないし、相手にも重くない、ちょうどいい一品が見つかるよ。
+¥2,000〜¥3,000
+一緒にいる友達や気のおけない仲間に。「あなたのこと考えて選んだよ」が伝わるちょっと特別感のあるプレゼントが揃ってるよ。
+¥3,000〜¥4,000
+ちょっと奮発したいときや、日頃の感謝も伝えたいときに。「ありがとう」も込められる、ちょっといいプレゼントを集めたよ。
+¥4,000〜¥5,000
+お世話になってる先輩や、かけがえのない大親友に。特別な気持ちを形にできる、とっておきのプレゼントが揃ってるよ。`;
+
 export default function PriceIndexPage() {
   const bands = getPriceBands();
 
@@ -18,10 +30,12 @@ export default function PriceIndexPage() {
       <Breadcrumb items={[{ label: "ホーム", href: "/" }, { label: "価格帯から探す" }]} />
       <header>
         <h1 className="text-2xl font-bold">価格帯から探す</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          予算に合わせて、誕生日プレゼントのおすすめ候補を価格帯ごとに一覧でご紹介します。
-        </p>
       </header>
+
+      <section className="intro-banner-text relative rounded-xl border-2 border-amber-400 bg-purple-950/40 px-[6%] py-[5%] text-xs leading-relaxed text-white shadow-[0_0_0_1px_rgba(251,191,36,0.4),0_4px_12px_rgba(0,0,0,0.15)] ring-1 ring-amber-200/60 ring-offset-2 sm:text-sm">
+        <p className="whitespace-pre-line">{PRICE_INTRO_TEXT}</p>
+      </section>
+
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {bands.map((band) => (
           <li key={band.slug}>

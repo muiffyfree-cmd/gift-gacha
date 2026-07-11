@@ -127,6 +127,10 @@ export default function ResultScreen({ initialPrize }: { initialPrize?: Prize | 
           >
             🛒 購入する
           </a>
+        ) : prize.affiliateHtml ? (
+          <p className="text-center text-sm text-gray-500">
+            写真を押すと購入ページに飛べます
+          </p>
         ) : (
           <p className="text-center text-sm text-gray-500">
             購入リンクが設定されていません
