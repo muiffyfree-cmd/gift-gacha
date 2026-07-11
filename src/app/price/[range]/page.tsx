@@ -29,7 +29,6 @@ export async function generateMetadata({
   return {
     title: `誕生日プレゼント 予算${band.label}｜誕プレガチャ`,
     description: `${band.label}の誕生日プレゼントを、贈る相手から絞り込めます。`,
-    robots: { index: false, follow: true },
   };
 }
 

@@ -26,6 +26,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(article.updatedAt),
   }));
 
+  const priceRoutes: MetadataRoute.Sitemap = bands.map((band) => ({
+    url: `${BASE_URL}/price/${band.slug}`,
+    priority: 0.8,
+    changeFrequency: "monthly" as const,
+    lastModified: buildDate,
+  }));
+
   const recipientRoutes: MetadataRoute.Sitemap = bands.flatMap((band) =>
     recipients.map((recipient) => ({
       url: `${BASE_URL}/price/${band.slug}/all/${encodeURIComponent(recipient.name)}`,
@@ -35,5 +42,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   );
 
-  return [...staticRoutes, ...recipientRoutes, ...articleRoutes];
+  return [...staticRoutes, ...priceRoutes, ...recipientRoutes, ...articleRoutes];
 }
