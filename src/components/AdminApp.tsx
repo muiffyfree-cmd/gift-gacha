@@ -19,7 +19,7 @@ import {
   type RarityWeights,
   type VisitStats,
 } from "@/lib/storage";
-import { createItem, deleteItem, fetchItems, updateItem } from "@/lib/items";
+import { createItem, deleteItem, fetchItems, syncItemTags, updateItem } from "@/lib/items";
 import {
   createArticle,
   deleteArticle,
@@ -53,6 +53,8 @@ type ArticleItemFormRow = {
   affiliateHtml: string;
   purchaseUrl: string;
   snsUrl: string;
+  itemId?: string;
+  newItemRarity: Rarity;
   type?: string;
   recipients: string[];
   moods: string[];
@@ -66,6 +68,8 @@ function emptyArticleItemRow(): ArticleItemFormRow {
     affiliateHtml: "",
     purchaseUrl: "",
     snsUrl: "",
+    itemId: undefined,
+    newItemRarity: "N",
     type: undefined,
     recipients: [],
     moods: [],
@@ -464,6 +468,8 @@ export default function AdminApp() {
         affiliateHtml: item.affiliateHtml ?? "",
         purchaseUrl: item.purchaseUrl ?? "",
         snsUrl: item.snsUrl ?? "",
+        itemId: item.itemId,
+        newItemRarity: "N",
         type: item.type,
         recipients: item.recipients ?? [],
         moods: item.moods ?? [],
@@ -485,6 +491,44 @@ export default function AdminApp() {
       title: value,
       slug: articleSlugTouched ? f.slug : slugify(value),
     }));
+  }
+
+  function selectArticleItemLinkedItem(index: number, itemId: string) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) => (i === index ? { ...row, itemId: itemId || undefined } : row)),
+    }));
+  }
+
+  function setArticleItemNewRarity(index: number, rarity: Rarity) {
+    setArticleForm((f) => ({
+      ...f,
+      items: f.items.map((row, i) => (i === index ? { ...row, newItemRarity: rarity } : row)),
+    }));
+  }
+
+  async function createItemFromArticleRow(index: number) {
+    const row = articleForm.items[index];
+    const name = row.name.trim();
+    if (!name) return;
+    try {
+      const created = await createItem({
+        name,
+        rarity: row.newItemRarity,
+        price: parsePriceText(row.price),
+        description: row.introText.trim() || undefined,
+        affiliateUrl: row.purchaseUrl.trim() || undefined,
+        affiliateHtml: row.affiliateHtml.trim() || undefined,
+        type: row.type,
+        recipients: row.recipients,
+        moods: row.moods,
+      });
+      setPrizes((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      selectArticleItemLinkedItem(index, created.id);
+      setArticlesError("");
+    } catch (err) {
+      setArticlesError(err instanceof Error ? err.message : "景品の追加に失敗しました。");
+    }
   }
 
   function selectArticleItemType(index: number, name: string) {
@@ -538,6 +582,7 @@ export default function AdminApp() {
           affiliateHtml: record["HTML"] ?? record["アフィリエイトHTML"] ?? "",
           purchaseUrl: record["購入URL"] ?? record["URL"] ?? "",
           snsUrl: "",
+          newItemRarity: "N",
           type: undefined,
           recipients: [],
           moods: [],
@@ -603,6 +648,7 @@ export default function AdminApp() {
         affiliateHtml: row.affiliateHtml.trim() || undefined,
         purchaseUrl: row.purchaseUrl.trim() || undefined,
         snsUrl: row.snsUrl.trim() || undefined,
+        itemId: row.itemId,
         type: row.type,
         recipients: row.recipients,
         moods: row.moods,
@@ -619,6 +665,21 @@ export default function AdminApp() {
         setArticles((prev) => prev.map((a) => (a.id === articleEditingId ? updated : a)));
       }
       setArticlesError("");
+
+      const linkedRows = articleForm.items.filter((row) => row.itemId);
+      if (linkedRows.length > 0) {
+        await Promise.all(
+          linkedRows.map((row) =>
+            syncItemTags(row.itemId as string, {
+              type: row.type,
+              recipients: row.recipients,
+              moods: row.moods,
+            })
+          )
+        );
+        setPrizes(await fetchItems());
+      }
+
       cancelArticleEdit();
     } catch (err) {
       setArticlesError(err instanceof Error ? err.message : "記事の保存に失敗しました。");
@@ -1710,6 +1771,43 @@ export default function AdminApp() {
                           className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
                         />
                       </label>
+
+                      {row.itemId ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-green-700">
+                          ✅ ガチャの景品として追加済み（下のタグを変更して保存すると景品側にも反映されます）
+                          <button
+                            type="button"
+                            onClick={() => selectArticleItemLinkedItem(index, "")}
+                            className="rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                          >
+                            追加状態を取り消す
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                          <select
+                            value={row.newItemRarity}
+                            onChange={(e) =>
+                              setArticleItemNewRarity(index, e.target.value as Rarity)
+                            }
+                            className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
+                          >
+                            {RARITY_OPTIONS.map((r) => (
+                              <option key={r} value={r}>
+                                {RARITY_LABELS[r]}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => createItemFromArticleRow(index)}
+                            disabled={!row.name.trim()}
+                            className="rounded bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-700 disabled:opacity-50"
+                          >
+                            ＋ この商品をガチャの景品として追加（タグも反映）
+                          </button>
+                        </div>
+                      )}
 
                       <div className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
                         種類（任意・1つ選択）

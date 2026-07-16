@@ -6,6 +6,7 @@ export type ArticleItem = {
   affiliateHtml?: string;
   purchaseUrl?: string;
   snsUrl?: string;
+  itemId?: string;
   type?: string;
   recipients?: string[];
   moods?: string[];

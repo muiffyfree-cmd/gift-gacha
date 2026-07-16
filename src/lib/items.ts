@@ -107,3 +107,24 @@ export async function deleteItem(id: string): Promise<void> {
   const { error } = await supabase.from("items").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function syncItemTags(
+  id: string,
+  tags: { type?: string; recipients?: string[]; moods?: string[] }
+): Promise<void> {
+  const current = await fetchItemById(id);
+  if (!current) return;
+  const recipients = Array.from(
+    new Set([...(current.recipients ?? []), ...(tags.recipients ?? [])])
+  );
+  const moods = Array.from(new Set([...(current.moods ?? []), ...(tags.moods ?? [])]));
+  const { error } = await supabase
+    .from("items")
+    .update({
+      type: tags.type ?? current.type ?? null,
+      recipients,
+      moods,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}

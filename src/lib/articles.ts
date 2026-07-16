@@ -10,6 +10,7 @@ type ArticleItemRow = {
   affiliate_html: string | null;
   purchase_url: string | null;
   sns_url: string | null;
+  item_id: string | null;
   type: string | null;
   recipients: string[] | null;
   moods: string[] | null;
@@ -38,6 +39,7 @@ function rowToArticleItem(row: ArticleItemRow): ArticleItem {
     affiliateHtml: row.affiliate_html ?? undefined,
     purchaseUrl: row.purchase_url ?? undefined,
     snsUrl: row.sns_url ?? undefined,
+    itemId: row.item_id ?? undefined,
     type: row.type ?? undefined,
     recipients: row.recipients ?? undefined,
     moods: row.moods ?? undefined,
@@ -67,6 +69,7 @@ export type ArticleItemInput = {
   affiliateHtml?: string;
   purchaseUrl?: string;
   snsUrl?: string;
+  itemId?: string;
   type?: string;
   recipients?: string[];
   moods?: string[];
@@ -141,6 +144,7 @@ async function replaceArticleItems(articleId: string, items: ArticleItemInput[])
       affiliate_html: item.affiliateHtml ?? null,
       purchase_url: item.purchaseUrl ?? null,
       sns_url: item.snsUrl ?? null,
+      item_id: item.itemId ?? null,
       type: item.type ?? null,
       recipients: item.recipients ?? [],
       moods: item.moods ?? [],
