@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: "/muiffybase/",
     },
-    sitemap: "https://presentgacha.com/sitemap.xml",
+    sitemap: "https://www.presentgacha.com/sitemap.xml",
   };
 }

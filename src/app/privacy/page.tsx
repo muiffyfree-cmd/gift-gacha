@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <section className="mb-8">
         <p className="text-sm text-zinc-500 mb-4">最終更新日：2026年6月29日</p>
         <p>
-          むぃっふぃ（以下「当方」）が運営する「誕プレガチャ」（https://presentgacha.com、以下「当サイト」）における個人情報の取り扱いについて、以下のとおりプライバシーポリシーを定めます。
+          むぃっふぃ（以下「当方」）が運営する「誕プレガチャ」（https://www.presentgacha.com、以下「当サイト」）における個人情報の取り扱いについて、以下のとおりプライバシーポリシーを定めます。
         </p>
       </section>
 

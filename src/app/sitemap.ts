@@ -1,13 +1,13 @@
 import type { MetadataRoute } from "next";
 import { fetchItemGenders, fetchItemRecipients } from "@/lib/tags";
 import { fetchArticles } from "@/lib/articles";
-import { GENDER_UNRESTRICTED_TAG } from "@/lib/searchFilters";
 
-const BASE_URL = "https://presentgacha.com";
+const BASE_URL = "https://www.presentgacha.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // /price/{性別} と /price/{性別}/{相手} はどちらも「絞り込まない」を含めて
+  // 実コンテンツ・インデックス対象なので allGenders をそのまま使う。
   const allGenders = await fetchItemGenders().catch(() => []);
-  const genders = allGenders.filter((g) => g.name !== GENDER_UNRESTRICTED_TAG);
   const recipients = await fetchItemRecipients().catch(() => []);
   const articles = await fetchArticles({ publishedOnly: true }).catch(() => []);
 
@@ -27,15 +27,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(article.updatedAt),
   }));
 
-  const genderRoutes: MetadataRoute.Sitemap = genders.map((g) => ({
+  const genderRoutes: MetadataRoute.Sitemap = allGenders.map((g) => ({
     url: `${BASE_URL}/price/${encodeURIComponent(g.name)}`,
     priority: 0.8,
     changeFrequency: "monthly" as const,
     lastModified: buildDate,
   }));
 
-  // 結果ページ(/price/{性別}/{相手})は「絞り込まない」もインデックス対象の実コンテンツを持つため、
-  // ここは genders ではなく allGenders を使う（性別選択ステップの /price/{性別} とは扱いが異なる）。
   const recipientRoutes: MetadataRoute.Sitemap = allGenders.flatMap((g) =>
     recipients.map((recipient) => ({
       url: `${BASE_URL}/price/${encodeURIComponent(g.name)}/${encodeURIComponent(recipient.name)}`,

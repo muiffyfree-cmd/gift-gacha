@@ -637,7 +637,7 @@ export default function AdminApp() {
 
   async function handleSaveArticle() {
     const title = articleForm.title.trim();
-    const slug = articleForm.slug.trim();
+    const slug = slugify(articleForm.slug.trim());
     if (!title || !slug || articleForm.items.length === 0) return;
     const payload: ArticleInput = {
       title,
@@ -1625,7 +1625,7 @@ export default function AdminApp() {
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-gray-600">
-                  URLスラッグ（/articles/以下）
+                  URLスラッグ（/articles/以下。"/"は含めない）
                   <input
                     type="text"
                     value={articleForm.slug}

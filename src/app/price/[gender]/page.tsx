@@ -25,8 +25,8 @@ export async function generateMetadata({
   const genderName = decodeSegment(gender);
   if (genderName === GENDER_UNRESTRICTED_TAG) {
     return {
-      title: "誕生日プレゼントを探す｜誕プレガチャ",
-      robots: { index: false, follow: true },
+      title: "誕生日プレゼントを相手から探す｜誕プレガチャ",
+      description: "性別を問わず、贈る相手から誕生日プレゼントを絞り込めます。",
     };
   }
   return {
@@ -56,7 +56,9 @@ export default async function RecipientSelectPage({
           ]}
         />
         <header>
-          <h1 className="text-2xl font-bold">{genderName}・送る相手を選ぶ</h1>
+          <h1 className="text-2xl font-bold">
+            {genderName === GENDER_UNRESTRICTED_TAG ? "送る相手を選ぶ" : `${genderName}・送る相手を選ぶ`}
+          </h1>
           <p className="mt-1 text-sm text-gray-400">プレゼントを贈る相手を選んでください。</p>
         </header>
 
