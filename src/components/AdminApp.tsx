@@ -33,13 +33,13 @@ import { checkIsAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { uploadEffectVideo } from "@/lib/uploads";
 import {
-  createItemMood,
+  createItemGender,
   createItemRecipient,
   createItemType,
-  deleteItemMood,
+  deleteItemGender,
   deleteItemRecipient,
   deleteItemType,
-  fetchItemMoods,
+  fetchItemGenders,
   fetchItemRecipients,
   fetchItemTypes,
   type Tag,
@@ -57,7 +57,7 @@ type ArticleItemFormRow = {
   newItemRarity: Rarity;
   type?: string;
   recipients: string[];
-  moods: string[];
+  gender?: string;
 };
 
 function emptyArticleItemRow(): ArticleItemFormRow {
@@ -72,7 +72,7 @@ function emptyArticleItemRow(): ArticleItemFormRow {
     newItemRarity: "N",
     type: undefined,
     recipients: [],
-    moods: [],
+    gender: undefined,
   };
 }
 
@@ -81,6 +81,19 @@ function parsePriceText(text: string): number | undefined {
   if (!match) return undefined;
   const value = Number(match[0]);
   return Number.isNaN(value) ? undefined : value;
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof (err as { message: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message;
+  }
+  return fallback;
 }
 
 type ArticleFormState = {
@@ -111,7 +124,7 @@ function emptyForm(): Omit<Prize, "id"> {
     affiliateHtml: "",
     type: undefined,
     recipients: [],
-    moods: [],
+    gender: undefined,
   };
 }
 
@@ -130,10 +143,10 @@ export default function AdminApp() {
   const [rarityWeights, setRarityWeights] = useState<RarityWeights | null>(null);
   const [itemTypes, setItemTypes] = useState<Tag[]>([]);
   const [itemRecipients, setItemRecipients] = useState<Tag[]>([]);
-  const [itemMoods, setItemMoods] = useState<Tag[]>([]);
+  const [itemGenders, setItemGenders] = useState<Tag[]>([]);
   const [newTypeName, setNewTypeName] = useState("");
   const [newRecipientName, setNewRecipientName] = useState("");
-  const [newMoodName, setNewMoodName] = useState("");
+  const [newGenderName, setNewGenderName] = useState("");
   const [tagsError, setTagsError] = useState("");
 
   const [articles, setArticles] = useState<Article[]>([]);
@@ -177,17 +190,17 @@ export default function AdminApp() {
     if (!session || !isAdmin) return;
     fetchItems()
       .then(setPrizes)
-      .catch((err) => setPrizesError(err instanceof Error ? err.message : "候補一覧の取得に失敗しました。"));
+      .catch((err) => setPrizesError(getErrorMessage(err, "候補一覧の取得に失敗しました。")));
     setPurchaseCounts(loadPurchaseCounts());
     setEffects(loadEffects());
     setVisitStats(loadVisitStats());
     setRarityWeights(loadRarityWeights());
     fetchItemTypes().then(setItemTypes).catch(() => {});
     fetchItemRecipients().then(setItemRecipients).catch(() => {});
-    fetchItemMoods().then(setItemMoods).catch(() => {});
+    fetchItemGenders().then(setItemGenders).catch(() => {});
     fetchAllArticlesForAdmin()
       .then(setArticles)
-      .catch((err) => setArticlesError(err instanceof Error ? err.message : "記事一覧の取得に失敗しました。"));
+      .catch((err) => setArticlesError(getErrorMessage(err, "記事一覧の取得に失敗しました。")));
   }, [session, isAdmin]);
 
   async function handleAddType() {
@@ -199,7 +212,7 @@ export default function AdminApp() {
       setNewTypeName("");
       setTagsError("");
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "種類の追加に失敗しました。");
+      setTagsError(getErrorMessage(err, "種類の追加に失敗しました。"));
     }
   }
 
@@ -208,7 +221,7 @@ export default function AdminApp() {
       await deleteItemType(id);
       setItemTypes((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "種類の削除に失敗しました。");
+      setTagsError(getErrorMessage(err, "種類の削除に失敗しました。"));
     }
   }
 
@@ -221,7 +234,7 @@ export default function AdminApp() {
       setNewRecipientName("");
       setTagsError("");
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "相手の追加に失敗しました。");
+      setTagsError(getErrorMessage(err, "相手の追加に失敗しました。"));
     }
   }
 
@@ -230,7 +243,7 @@ export default function AdminApp() {
       await deleteItemRecipient(id);
       setItemRecipients((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "相手の削除に失敗しました。");
+      setTagsError(getErrorMessage(err, "相手の削除に失敗しました。"));
     }
   }
 
@@ -244,39 +257,33 @@ export default function AdminApp() {
     });
   }
 
-  function toggleMood(name: string) {
-    setForm((f) => {
-      const current = f.moods ?? [];
-      const next = current.includes(name)
-        ? current.filter((m) => m !== name)
-        : [...current, name];
-      return { ...f, moods: next };
-    });
-  }
-
   function selectType(name: string) {
     setForm((f) => ({ ...f, type: f.type === name ? undefined : name }));
   }
 
-  async function handleAddMood() {
-    const name = newMoodName.trim();
+  function selectGender(name: string) {
+    setForm((f) => ({ ...f, gender: f.gender === name ? undefined : name }));
+  }
+
+  async function handleAddGender() {
+    const name = newGenderName.trim();
     if (!name) return;
     try {
-      const created = await createItemMood(name);
-      setItemMoods((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewMoodName("");
+      const created = await createItemGender(name);
+      setItemGenders((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewGenderName("");
       setTagsError("");
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "気分の追加に失敗しました。");
+      setTagsError(getErrorMessage(err, "性別の追加に失敗しました。"));
     }
   }
 
-  async function handleDeleteMood(id: string) {
+  async function handleDeleteGender(id: string) {
     try {
-      await deleteItemMood(id);
-      setItemMoods((prev) => prev.filter((t) => t.id !== id));
+      await deleteItemGender(id);
+      setItemGenders((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      setTagsError(err instanceof Error ? err.message : "気分の削除に失敗しました。");
+      setTagsError(getErrorMessage(err, "性別の削除に失敗しました。"));
     }
   }
 
@@ -360,7 +367,7 @@ export default function AdminApp() {
       const url = await uploadEffectVideo(file);
       appendEffectUrl(rarity, url);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "アップロードに失敗しました。");
+      setUploadError(getErrorMessage(err, "アップロードに失敗しました。"));
     } finally {
       setUploadingRarity(null);
     }
@@ -393,7 +400,7 @@ export default function AdminApp() {
       affiliateHtml: prize.affiliateHtml ?? "",
       type: prize.type,
       recipients: prize.recipients ?? [],
-      moods: prize.moods ?? [],
+      gender: prize.gender,
     });
   }
 
@@ -418,7 +425,7 @@ export default function AdminApp() {
       affiliateHtml,
       type: form.type,
       recipients: form.recipients,
-      moods: form.moods,
+      gender: form.gender,
     };
 
     try {
@@ -432,7 +439,7 @@ export default function AdminApp() {
       setPrizesError("");
       cancelEdit();
     } catch (err) {
-      setPrizesError(err instanceof Error ? err.message : "保存に失敗しました。");
+      setPrizesError(getErrorMessage(err, "保存に失敗しました。"));
     }
   }
 
@@ -443,7 +450,7 @@ export default function AdminApp() {
       if (editingId === id) cancelEdit();
       setPrizesError("");
     } catch (err) {
-      setPrizesError(err instanceof Error ? err.message : "削除に失敗しました。");
+      setPrizesError(getErrorMessage(err, "削除に失敗しました。"));
     }
   }
 
@@ -472,7 +479,7 @@ export default function AdminApp() {
         newItemRarity: "N",
         type: item.type,
         recipients: item.recipients ?? [],
-        moods: item.moods ?? [],
+        gender: item.gender,
       })),
     });
     setArticleSlugTouched(true);
@@ -521,13 +528,13 @@ export default function AdminApp() {
         affiliateHtml: row.affiliateHtml.trim() || undefined,
         type: row.type,
         recipients: row.recipients,
-        moods: row.moods,
+        gender: row.gender,
       });
       setPrizes((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       selectArticleItemLinkedItem(index, created.id);
       setArticlesError("");
     } catch (err) {
-      setArticlesError(err instanceof Error ? err.message : "景品の追加に失敗しました。");
+      setArticlesError(getErrorMessage(err, "景品の追加に失敗しました。"));
     }
   }
 
@@ -553,16 +560,12 @@ export default function AdminApp() {
     }));
   }
 
-  function toggleArticleItemMood(index: number, name: string) {
+  function selectArticleItemGender(index: number, name: string) {
     setArticleForm((f) => ({
       ...f,
-      items: f.items.map((row, i) => {
-        if (i !== index) return row;
-        const next = row.moods.includes(name)
-          ? row.moods.filter((m) => m !== name)
-          : [...row.moods, name];
-        return { ...row, moods: next };
-      }),
+      items: f.items.map((row, i) =>
+        i === index ? { ...row, gender: row.gender === name ? undefined : name } : row
+      ),
     }));
   }
 
@@ -585,7 +588,7 @@ export default function AdminApp() {
           newItemRarity: "N",
           type: undefined,
           recipients: [],
-          moods: [],
+          gender: undefined,
         }));
         setArticleForm((f) => ({
           ...f,
@@ -651,7 +654,7 @@ export default function AdminApp() {
         itemId: row.itemId,
         type: row.type,
         recipients: row.recipients,
-        moods: row.moods,
+        gender: row.gender,
         sortOrder: i,
       })),
     };
@@ -673,7 +676,7 @@ export default function AdminApp() {
             syncItemTags(row.itemId as string, {
               type: row.type,
               recipients: row.recipients,
-              moods: row.moods,
+              gender: row.gender,
             })
           )
         );
@@ -682,7 +685,7 @@ export default function AdminApp() {
 
       cancelArticleEdit();
     } catch (err) {
-      setArticlesError(err instanceof Error ? err.message : "記事の保存に失敗しました。");
+      setArticlesError(getErrorMessage(err, "記事の保存に失敗しました。"));
     }
   }
 
@@ -693,7 +696,7 @@ export default function AdminApp() {
       if (articleEditingId === id) cancelArticleEdit();
       setArticlesError("");
     } catch (err) {
-      setArticlesError(err instanceof Error ? err.message : "記事の削除に失敗しました。");
+      setArticlesError(getErrorMessage(err, "記事の削除に失敗しました。"));
     }
   }
 
@@ -713,13 +716,13 @@ export default function AdminApp() {
           purchaseUrl: item.purchaseUrl,
           type: item.type,
           recipients: item.recipients,
-          moods: item.moods,
+          gender: item.gender,
           sortOrder: i,
         })),
       });
       setArticles((prev) => prev.map((a) => (a.id === article.id ? updated : a)));
     } catch (err) {
-      setArticlesError(err instanceof Error ? err.message : "公開状態の更新に失敗しました。");
+      setArticlesError(getErrorMessage(err, "公開状態の更新に失敗しました。"));
     }
   }
 
@@ -749,7 +752,7 @@ export default function AdminApp() {
       setGachaConvertMessage(`「${item.name}」をガチャ景品に追加しました。`);
     } catch (err) {
       setGachaConvertMessage(
-        err instanceof Error ? err.message : "ガチャ景品への追加に失敗しました。"
+        getErrorMessage(err, "ガチャ景品への追加に失敗しました。")
       );
     }
   }
@@ -780,7 +783,7 @@ export default function AdminApp() {
       );
     } catch (err) {
       setGachaConvertMessage(
-        err instanceof Error ? err.message : "ガチャ景品への追加に失敗しました。"
+        getErrorMessage(err, "ガチャ景品への追加に失敗しました。")
       );
     }
   }
@@ -916,9 +919,9 @@ export default function AdminApp() {
                     {prize.recipients.join("・")}
                   </span>
                 )}
-                {prize.moods && prize.moods.length > 0 && (
-                  <span className="shrink-0 truncate text-xs text-gray-400">
-                    {prize.moods.join("・")}
+                {prize.gender && (
+                  <span className="shrink-0 rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
+                    {prize.gender}
                   </span>
                 )}
                 {prize.affiliateUrl && (
@@ -1119,27 +1122,27 @@ export default function AdminApp() {
             </div>
 
             <div className="flex flex-col gap-1 text-sm text-gray-600">
-              気分（任意・複数選択可）
+              性別（任意・1つ選択）
               <div className="flex flex-wrap gap-2">
-                {itemMoods.length === 0 && (
+                {itemGenders.length === 0 && (
                   <p className="text-xs text-gray-400">
-                    気分の候補がまだありません。下の「タグ管理」で追加してください。
+                    性別の候補がまだありません。下の「タグ管理」で追加してください。
                   </p>
                 )}
-                {itemMoods.map((m) => {
-                  const selected = (form.moods ?? []).includes(m.name);
+                {itemGenders.map((g) => {
+                  const selected = form.gender === g.name;
                   return (
                     <button
-                      key={m.id}
+                      key={g.id}
                       type="button"
-                      onClick={() => toggleMood(m.name)}
+                      onClick={() => selectGender(g.name)}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                         selected
                           ? "border-pink-600 bg-pink-600 text-white"
                           : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
                       }`}
                     >
-                      {m.name}
+                      {g.name}
                     </button>
                   );
                 })}
@@ -1263,7 +1266,7 @@ export default function AdminApp() {
       </section>
 
       <section className="rounded-xl border border-gray-200 p-4">
-        <h2 className="mb-3 font-semibold text-gray-700">タグ管理（種類・相手・気分）</h2>
+        <h2 className="mb-3 font-semibold text-gray-700">タグ管理（種類・相手・性別）</h2>
         {tagsError && <p className="mb-2 text-sm text-red-600">{tagsError}</p>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
@@ -1343,36 +1346,36 @@ export default function AdminApp() {
           </div>
 
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-gray-600">気分（複数選択用）</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-600">性別（単一選択用）</h3>
             <ul className="mb-2 flex flex-col gap-1">
-              {itemMoods.map((m) => (
+              {itemGenders.map((g) => (
                 <li
-                  key={m.id}
+                  key={g.id}
                   className="flex items-center justify-between gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
                 >
-                  <span className="truncate text-gray-700">{m.name}</span>
+                  <span className="truncate text-gray-700">{g.name}</span>
                   <button
-                    onClick={() => handleDeleteMood(m.id)}
+                    onClick={() => handleDeleteGender(g.id)}
                     className="shrink-0 rounded bg-red-100 px-2 py-1 font-medium text-red-600 hover:bg-red-200"
                   >
                     削除
                   </button>
                 </li>
               ))}
-              {itemMoods.length === 0 && (
-                <li className="text-xs text-gray-400">気分がまだありません。</li>
+              {itemGenders.length === 0 && (
+                <li className="text-xs text-gray-400">性別がまだありません。</li>
               )}
             </ul>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={newMoodName}
-                onChange={(e) => setNewMoodName(e.target.value)}
-                placeholder="例: 楽しい"
+                value={newGenderName}
+                onChange={(e) => setNewGenderName(e.target.value)}
+                placeholder="例: 男性"
                 className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-pink-400 focus:outline-none"
               />
               <button
-                onClick={handleAddMood}
+                onClick={handleAddGender}
                 className="rounded bg-pink-600 px-3 py-1 text-xs font-semibold text-white hover:bg-pink-700"
               >
                 + 追加
@@ -1856,22 +1859,22 @@ export default function AdminApp() {
                       </div>
 
                       <div className="mt-2 flex flex-col gap-1 text-xs text-gray-600">
-                        気分（任意・複数選択可）
+                        性別（任意・1つ選択）
                         <div className="flex flex-wrap gap-1">
-                          {itemMoods.map((m) => {
-                            const selected = row.moods.includes(m.name);
+                          {itemGenders.map((g) => {
+                            const selected = row.gender === g.name;
                             return (
                               <button
-                                key={m.id}
+                                key={g.id}
                                 type="button"
-                                onClick={() => toggleArticleItemMood(index, m.name)}
+                                onClick={() => selectArticleItemGender(index, g.name)}
                                 className={`rounded-full border px-2 py-0.5 text-xs font-medium transition ${
                                   selected
                                     ? "border-pink-600 bg-pink-600 text-white"
                                     : "border-gray-300 bg-white text-gray-600 hover:border-pink-300"
                                 }`}
                               >
-                                {m.name}
+                                {g.name}
                               </button>
                             );
                           })}

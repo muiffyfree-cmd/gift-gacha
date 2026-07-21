@@ -13,7 +13,7 @@ type ArticleItemRow = {
   item_id: string | null;
   type: string | null;
   recipients: string[] | null;
-  moods: string[] | null;
+  gender: string | null;
   sort_order: number;
 };
 
@@ -42,7 +42,7 @@ function rowToArticleItem(row: ArticleItemRow): ArticleItem {
     itemId: row.item_id ?? undefined,
     type: row.type ?? undefined,
     recipients: row.recipients ?? undefined,
-    moods: row.moods ?? undefined,
+    gender: row.gender ?? undefined,
     sortOrder: row.sort_order,
   };
 }
@@ -72,7 +72,7 @@ export type ArticleItemInput = {
   itemId?: string;
   type?: string;
   recipients?: string[];
-  moods?: string[];
+  gender?: string;
   sortOrder: number;
 };
 
@@ -147,7 +147,7 @@ async function replaceArticleItems(articleId: string, items: ArticleItemInput[])
       item_id: item.itemId ?? null,
       type: item.type ?? null,
       recipients: item.recipients ?? [],
-      moods: item.moods ?? [],
+      gender: item.gender ?? null,
       sort_order: item.sortOrder,
     }))
   );

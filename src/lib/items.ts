@@ -11,7 +11,7 @@ type ItemRow = {
   affiliatehtml: string | null;
   type: string | null;
   recipients: string[] | null;
-  moods: string[] | null;
+  gender: string | null;
 };
 
 function rowToPrize(row: ItemRow): Prize {
@@ -25,7 +25,7 @@ function rowToPrize(row: ItemRow): Prize {
     affiliateHtml: row.affiliatehtml ?? undefined,
     type: row.type ?? undefined,
     recipients: row.recipients ?? undefined,
-    moods: row.moods ?? undefined,
+    gender: row.gender ?? undefined,
   };
 }
 
@@ -39,7 +39,7 @@ function prizeToRow(item: Omit<Prize, "id">) {
     affiliatehtml: item.affiliateHtml ?? null,
     type: item.type ?? null,
     recipients: item.recipients ?? [],
-    moods: item.moods ?? [],
+    gender: item.gender ?? null,
   };
 }
 
@@ -48,16 +48,6 @@ export async function fetchItems(): Promise<Prize[]> {
     .from("items")
     .select("*")
     .order("name", { ascending: true });
-  if (error) throw error;
-  return (data as ItemRow[]).map(rowToPrize);
-}
-
-export async function fetchItemsByPriceRange(min: number, max: number): Promise<Prize[]> {
-  let query = supabase.from("items").select("*").gte("price", min);
-  if (Number.isFinite(max)) {
-    query = query.lte("price", max);
-  }
-  const { data, error } = await query.order("price", { ascending: true });
   if (error) throw error;
   return (data as ItemRow[]).map(rowToPrize);
 }
@@ -110,20 +100,19 @@ export async function deleteItem(id: string): Promise<void> {
 
 export async function syncItemTags(
   id: string,
-  tags: { type?: string; recipients?: string[]; moods?: string[] }
+  tags: { type?: string; recipients?: string[]; gender?: string }
 ): Promise<void> {
   const current = await fetchItemById(id);
   if (!current) return;
   const recipients = Array.from(
     new Set([...(current.recipients ?? []), ...(tags.recipients ?? [])])
   );
-  const moods = Array.from(new Set([...(current.moods ?? []), ...(tags.moods ?? [])]));
   const { error } = await supabase
     .from("items")
     .update({
       type: tags.type ?? current.type ?? null,
       recipients,
-      moods,
+      gender: tags.gender ?? current.gender ?? null,
     })
     .eq("id", id);
   if (error) throw error;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Prize } from "@/types/gacha";
 import { loadLastResult, recordPurchase } from "@/lib/storage";
 import {
@@ -29,6 +30,19 @@ function SectionHeading({ step, label }: { step: number; label: string }) {
 export default function ResultScreen({ initialPrize }: { initialPrize?: Prize | null }) {
   const [prize, setPrize] = useState<Prize | null>(initialPrize ?? null);
   const [loaded, setLoaded] = useState(initialPrize !== undefined);
+  const searchParams = useSearchParams();
+
+  const retryParams = new URLSearchParams();
+  const gender = searchParams.get("gender");
+  const recipient = searchParams.get("recipient");
+  const type = searchParams.get("type");
+  const budget = searchParams.get("budget");
+  if (gender) retryParams.set("gender", gender);
+  if (recipient) retryParams.set("recipient", recipient);
+  if (type) retryParams.set("type", type);
+  if (budget) retryParams.set("budget", budget);
+  retryParams.set("spin", "1");
+  const retryHref = `/?${retryParams.toString()}`;
 
   useEffect(() => {
     if (initialPrize !== undefined) return;
@@ -139,7 +153,7 @@ export default function ResultScreen({ initialPrize }: { initialPrize?: Prize | 
 
         <div className="mx-auto mt-2 flex flex-col items-center gap-3">
           <Link
-            href="/?spin=1"
+            href={retryHref}
             className="rounded-full border border-pink-300 px-6 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50"
           >
             もう一度ガチャを回す

@@ -9,7 +9,7 @@ export type ArticleItem = {
   itemId?: string;
   type?: string;
   recipients?: string[];
-  moods?: string[];
+  gender?: string;
   sortOrder: number;
 };
 

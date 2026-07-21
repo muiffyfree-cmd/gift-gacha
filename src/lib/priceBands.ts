@@ -24,6 +24,3 @@ export function parsePriceBandSlug(slug: string): PriceBand | null {
   return getPriceBands().find((b) => b.slug === slug) ?? null;
 }
 
-export function getPriceBandForPrice(price: number): PriceBand | null {
-  return getPriceBands().find((b) => price >= b.min && price <= b.max) ?? null;
-}

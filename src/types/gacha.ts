@@ -10,5 +10,5 @@ export type Prize = {
   affiliateHtml?: string;
   type?: string;
   recipients?: string[];
-  moods?: string[];
+  gender?: string;
 };

@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import GachaApp from "@/components/GachaApp";
 
 export const metadata: Metadata = {
-  title: "誕生日プレゼントを探す｜誕プレガチャ",
+  title: "誕生日プレゼントがわからない・決まらない人へ｜おすすめ誕プレをガチャで",
+  description:
+    "何をあげればいいかわからない、決まらない、思いつかない…そんな時は「誕プレガチャ」。ボタンを押すだけで誕生日プレゼント候補が出てきます。",
 };
 
 export default function Home() {

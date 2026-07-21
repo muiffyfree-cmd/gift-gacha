@@ -2,44 +2,60 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { fetchItems } from "@/lib/items";
-import { filterItems } from "@/lib/searchFilters";
+import { filterItems, GENDER_UNRESTRICTED_TAG } from "@/lib/searchFilters";
 import { decodeSegment } from "@/lib/decodeSegment";
 import { RARITY_LABELS } from "@/lib/rarity";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ mood: string }>;
+  params: Promise<{ gender: string }>;
 }): Promise<Metadata> {
-  const { mood } = await params;
-  const moodName = decodeSegment(mood);
+  const { gender } = await params;
+  const genderName = decodeSegment(gender);
   return {
-    title: `${moodName}な誕生日プレゼント一覧｜誕プレガチャ`,
+    title: `${genderName}向けの誕生日プレゼント一覧｜誕プレガチャ`,
     robots: { index: false, follow: true },
   };
 }
 
-export default async function MoodGenrePage({
+export default async function GenderGenrePage({
   params,
 }: {
-  params: Promise<{ mood: string }>;
+  params: Promise<{ gender: string }>;
 }) {
-  const { mood } = await params;
-  const moodName = decodeSegment(mood);
+  const { gender } = await params;
+  const genderName = decodeSegment(gender);
 
   const allItems = await fetchItems().catch(() => []);
-  const items = filterItems(allItems, { mood: moodName });
+  const items =
+    genderName === GENDER_UNRESTRICTED_TAG
+      ? allItems
+      : filterItems(allItems, { gender: genderName });
 
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10">
-        <Breadcrumb items={[{ label: "ホーム", href: "/" }, { label: `気分: ${moodName}` }]} />
+        <Breadcrumb items={[{ label: "ホーム", href: "/" }, { label: `性別: ${genderName}` }]} />
         <header>
-          <h1 className="text-2xl font-bold">{moodName}な誕生日プレゼント一覧</h1>
+          <h1 className="text-2xl font-bold">{genderName}向けの誕生日プレゼント一覧</h1>
         </header>
 
+        {items.length > 0 && (
+          <Link
+            href={
+              genderName === GENDER_UNRESTRICTED_TAG
+                ? "/"
+                : `/?gender=${encodeURIComponent(genderName)}`
+            }
+            className="block w-full rounded-full bg-pink-600 px-6 py-3 text-center text-sm font-bold text-white shadow hover:bg-pink-700"
+          >
+            🎰 この条件でガチャを引く（{items.length}件から）
+          </Link>
+        )}
+
         {items.length === 0 ? (
-          <p className="text-sm text-gray-500">この気分の候補はまだありません。</p>
+          <p className="text-sm text-gray-500">この性別向けの候補はまだありません。</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {items.map((item) => (

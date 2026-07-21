@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,6 +8,8 @@ import type { Prize } from "@/types/gacha";
 import { loadEffects, loadRarityWeights, recordVisit, saveLastResult, type RarityWeights } from "@/lib/storage";
 import { fetchItems } from "@/lib/items";
 import { RARITY_LABELS, RARITY_OPTIONS } from "@/lib/rarity";
+import { filterItems, GENDER_UNRESTRICTED_TAG } from "@/lib/searchFilters";
+import { parsePriceBandSlug } from "@/lib/priceBands";
 import IntroBanner from "@/components/IntroBanner";
 
 const SPIN_DURATION_MS = 1200;
@@ -25,7 +27,7 @@ function pickWeightedPrize(prizes: Prize[], weights: RarityWeights): Prize {
 export default function GachaApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [allItems, setAllItems] = useState<Prize[]>([]);
   const [isSpinning, setIsSpinning] = useState(false);
   const [history, setHistory] = useState<Prize[]>([]);
   const [pendingPrize, setPendingPrize] = useState<Prize | null>(null);
@@ -35,18 +37,43 @@ export default function GachaApp() {
 
   useEffect(() => {
     fetchItems()
-      .then(setPrizes)
-      .catch(() => setPrizes([]));
+      .then(setAllItems)
+      .catch(() => setAllItems([]));
     recordVisit();
     setRarityWeights(loadRarityWeights());
   }, []);
+
+  const genderParam = searchParams.get("gender");
+  const recipientParam = searchParams.get("recipient");
+  const typeParam = searchParams.get("type");
+  const budgetParam = searchParams.get("budget");
+  const isFiltered = Boolean(genderParam || recipientParam || typeParam || budgetParam);
+
+  const prizes = useMemo(() => {
+    const genderFilter = genderParam === GENDER_UNRESTRICTED_TAG ? null : genderParam;
+    let pool = filterItems(allItems, {
+      type: typeParam,
+      recipient: recipientParam,
+      gender: genderFilter,
+    });
+    const budgetBand = budgetParam ? parsePriceBandSlug(budgetParam) : null;
+    if (budgetBand) {
+      pool = pool.filter(
+        (item) => item.price !== undefined && item.price >= budgetBand.min && item.price <= budgetBand.max
+      );
+    }
+    return pool;
+  }, [allItems, genderParam, recipientParam, typeParam, budgetParam]);
 
   useEffect(() => {
     if (autoSpunRef.current) return;
     if (prizes.length === 0) return;
     if (searchParams.get("spin") !== "1") return;
     autoSpunRef.current = true;
-    router.replace("/");
+    const remainingParams = new URLSearchParams(searchParams.toString());
+    remainingParams.delete("spin");
+    const remainingQuery = remainingParams.toString();
+    router.replace(remainingQuery ? `/?${remainingQuery}` : "/");
     handleSpin();
   }, [prizes, searchParams, router]);
 
@@ -54,7 +81,13 @@ export default function GachaApp() {
     setHistory((prev) => [picked, ...prev].slice(0, 10));
     setIsSpinning(false);
     saveLastResult(picked);
-    router.push(`/result/${picked.id}`);
+    const params = new URLSearchParams();
+    if (genderParam) params.set("gender", genderParam);
+    if (recipientParam) params.set("recipient", recipientParam);
+    if (typeParam) params.set("type", typeParam);
+    if (budgetParam) params.set("budget", budgetParam);
+    const query = params.toString();
+    router.push(query ? `/result/${picked.id}?${query}` : `/result/${picked.id}`);
   }
 
   function handleSpin() {
@@ -112,6 +145,21 @@ export default function GachaApp() {
 
       <IntroBanner />
 
+      {isFiltered && (
+        <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
+          <section className="rounded-xl border border-pink-300 bg-pink-50 p-3 text-center text-sm text-pink-700">
+            {prizes.length > 0 ? (
+              <p>絞り込んだ{prizes.length}件の候補からガチャを引きます。</p>
+            ) : (
+              <p>この条件に合う候補がありません。条件を変えてください。</p>
+            )}
+            <Link href="/" className="mt-1 inline-block text-xs font-semibold underline hover:text-pink-900">
+              絞り込みを解除する
+            </Link>
+          </section>
+        </div>
+      )}
+
       <div className="relative mx-auto w-full max-w-xl px-4 pt-6">
         <ul className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 sm:text-sm">
           {RARITY_OPTIONS.map((rarity) => {
@@ -151,7 +199,7 @@ export default function GachaApp() {
       <div className="relative mx-auto w-full max-w-xl px-4 pt-4">
         <section className="rounded-xl border border-gray-200 bg-white/80 p-4 text-center">
           <Link href="/price" className="inline-block text-sm font-semibold text-pink-600 hover:underline">
-            価格帯・送る相手・気分からおすすめを探す →
+            性別・送る相手・予算からおすすめを探す →
           </Link>
         </section>
       </div>

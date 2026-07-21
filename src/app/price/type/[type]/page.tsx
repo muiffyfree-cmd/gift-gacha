@@ -38,6 +38,15 @@ export default async function TypeGenrePage({
           <h1 className="text-2xl font-bold">{typeName}の誕生日プレゼント一覧</h1>
         </header>
 
+        {items.length > 0 && (
+          <Link
+            href={`/?type=${encodeURIComponent(typeName)}`}
+            className="block w-full rounded-full bg-pink-600 px-6 py-3 text-center text-sm font-bold text-white shadow hover:bg-pink-700"
+          >
+            🎰 この条件でガチャを引く（{items.length}件から）
+          </Link>
+        )}
+
         {items.length === 0 ? (
           <p className="text-sm text-gray-500">この種類の候補はまだありません。</p>
         ) : (

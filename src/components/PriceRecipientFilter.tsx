@@ -6,6 +6,7 @@ import type { Prize } from "@/types/gacha";
 import type { Tag } from "@/lib/tags";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { filterItems } from "@/lib/searchFilters";
+import { getPriceBands } from "@/lib/priceBands";
 
 const CHIP_CLASS =
   "rounded-full border px-3 py-1 text-xs font-medium transition";
@@ -15,20 +16,24 @@ const CHIP_INACTIVE = "border-gray-600 bg-transparent text-gray-300 hover:border
 export default function PriceRecipientFilter({
   items,
   typeTags,
-  moodTags,
+  gender,
+  recipient,
 }: {
   items: Prize[];
   typeTags: Tag[];
-  moodTags: Tag[];
+  gender?: string | null;
+  recipient?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const typeFilter = searchParams.get("type");
-  const moodFilter = searchParams.get("mood");
+  const budgetFilter = searchParams.get("budget");
+  const bands = getPriceBands();
+  const budgetBand = budgetFilter ? bands.find((b) => b.slug === budgetFilter) ?? null : null;
 
-  function updateParam(key: "type" | "mood", value: string | null) {
+  function updateParam(key: "type" | "budget", value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
       params.set(key, value);
@@ -39,7 +44,20 @@ export default function PriceRecipientFilter({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
-  const filtered = filterItems(items, { type: typeFilter, mood: moodFilter });
+  const typeFiltered = filterItems(items, { type: typeFilter });
+  const filtered = budgetBand
+    ? typeFiltered.filter(
+        (item) => item.price !== undefined && item.price >= budgetBand.min && item.price <= budgetBand.max
+      )
+    : typeFiltered;
+
+  const spinParams = new URLSearchParams();
+  if (gender) spinParams.set("gender", gender);
+  if (recipient) spinParams.set("recipient", recipient);
+  if (typeFilter) spinParams.set("type", typeFilter);
+  if (budgetFilter) spinParams.set("budget", budgetFilter);
+  const spinQuery = spinParams.toString();
+  const spinHref = spinQuery ? `/?${spinQuery}` : "/";
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,29 +86,36 @@ export default function PriceRecipientFilter({
         </div>
       )}
 
-      {moodTags.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold text-gray-400">気分で絞り込む</span>
-          <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-semibold text-gray-400">予算で絞り込む</span>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => updateParam("budget", null)}
+            className={`${CHIP_CLASS} ${!budgetFilter ? CHIP_ACTIVE : CHIP_INACTIVE}`}
+          >
+            絞り込まない
+          </button>
+          {bands.map((band) => (
             <button
+              key={band.slug}
               type="button"
-              onClick={() => updateParam("mood", null)}
-              className={`${CHIP_CLASS} ${!moodFilter ? CHIP_ACTIVE : CHIP_INACTIVE}`}
+              onClick={() => updateParam("budget", band.slug)}
+              className={`${CHIP_CLASS} ${budgetFilter === band.slug ? CHIP_ACTIVE : CHIP_INACTIVE}`}
             >
-              絞り込まない
+              {band.label}
             </button>
-            {moodTags.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => updateParam("mood", m.name)}
-                className={`${CHIP_CLASS} ${moodFilter === m.name ? CHIP_ACTIVE : CHIP_INACTIVE}`}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
+      </div>
+
+      {filtered.length > 0 && (
+        <Link
+          href={spinHref}
+          className="block w-full rounded-full bg-pink-600 px-6 py-3 text-center text-sm font-bold text-white shadow hover:bg-pink-700"
+        >
+          🎰 この条件でガチャを引く（{filtered.length}件から）
+        </Link>
       )}
 
       {filtered.length === 0 ? (

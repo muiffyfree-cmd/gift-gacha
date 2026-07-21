@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
-import { getPriceBands } from "@/lib/priceBands";
-import { fetchItemRecipients } from "@/lib/tags";
+import { fetchItemGenders, fetchItemRecipients } from "@/lib/tags";
 import { fetchArticles } from "@/lib/articles";
+import { GENDER_UNRESTRICTED_TAG } from "@/lib/searchFilters";
 
 const BASE_URL = "https://presentgacha.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const bands = getPriceBands();
+  const allGenders = await fetchItemGenders().catch(() => []);
+  const genders = allGenders.filter((g) => g.name !== GENDER_UNRESTRICTED_TAG);
   const recipients = await fetchItemRecipients().catch(() => []);
   const articles = await fetchArticles({ publishedOnly: true }).catch(() => []);
 
@@ -26,21 +27,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(article.updatedAt),
   }));
 
-  const priceRoutes: MetadataRoute.Sitemap = bands.map((band) => ({
-    url: `${BASE_URL}/price/${band.slug}`,
+  const genderRoutes: MetadataRoute.Sitemap = genders.map((g) => ({
+    url: `${BASE_URL}/price/${encodeURIComponent(g.name)}`,
     priority: 0.8,
     changeFrequency: "monthly" as const,
     lastModified: buildDate,
   }));
 
-  const recipientRoutes: MetadataRoute.Sitemap = bands.flatMap((band) =>
+  // 結果ページ(/price/{性別}/{相手})は「絞り込まない」もインデックス対象の実コンテンツを持つため、
+  // ここは genders ではなく allGenders を使う（性別選択ステップの /price/{性別} とは扱いが異なる）。
+  const recipientRoutes: MetadataRoute.Sitemap = allGenders.flatMap((g) =>
     recipients.map((recipient) => ({
-      url: `${BASE_URL}/price/${band.slug}/all/${encodeURIComponent(recipient.name)}`,
+      url: `${BASE_URL}/price/${encodeURIComponent(g.name)}/${encodeURIComponent(recipient.name)}`,
       priority: 0.7,
       changeFrequency: "monthly" as const,
       lastModified: buildDate,
     }))
   );
 
-  return [...staticRoutes, ...priceRoutes, ...recipientRoutes, ...articleRoutes];
+  return [...staticRoutes, ...genderRoutes, ...recipientRoutes, ...articleRoutes];
 }

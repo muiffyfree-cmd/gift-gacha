@@ -67,7 +67,7 @@ export default async function ArticlePage({
 
               {(articleItem.type ||
                 (articleItem.recipients && articleItem.recipients.length > 0) ||
-                (articleItem.moods && articleItem.moods.length > 0)) && (
+                articleItem.gender) && (
                 <ul className="flex flex-wrap justify-center gap-2">
                   {articleItem.type && (
                     <li>
@@ -89,16 +89,16 @@ export default async function ArticlePage({
                       </Link>
                     </li>
                   ))}
-                  {articleItem.moods?.map((m) => (
-                    <li key={m}>
+                  {articleItem.gender && (
+                    <li>
                       <Link
-                        href={`/price/mood/${encodeURIComponent(m)}`}
+                        href={`/price/gender/${encodeURIComponent(articleItem.gender)}`}
                         className="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700 hover:bg-amber-200"
                       >
-                        気分: {m}
+                        性別: {articleItem.gender}
                       </Link>
                     </li>
-                  ))}
+                  )}
                 </ul>
               )}
 

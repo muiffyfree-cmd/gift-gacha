@@ -23,7 +23,7 @@ function makeTagApi(table: string) {
 
 const typesApi = makeTagApi("item_types");
 const recipientsApi = makeTagApi("item_recipients");
-const moodsApi = makeTagApi("item_moods");
+const gendersApi = makeTagApi("item_genders");
 
 export const fetchItemTypes = typesApi.fetch;
 export const createItemType = typesApi.create;
@@ -33,6 +33,6 @@ export const fetchItemRecipients = recipientsApi.fetch;
 export const createItemRecipient = recipientsApi.create;
 export const deleteItemRecipient = recipientsApi.remove;
 
-export const fetchItemMoods = moodsApi.fetch;
-export const createItemMood = moodsApi.create;
-export const deleteItemMood = moodsApi.remove;
+export const fetchItemGenders = gendersApi.fetch;
+export const createItemGender = gendersApi.create;
+export const deleteItemGender = gendersApi.remove;

@@ -1,13 +1,18 @@
 import type { Prize } from "@/types/gacha";
 
+export const GENDER_UNRESTRICTED_TAG = "絞り込まない";
+
 export function filterItems(
   items: Prize[],
-  filters: { type?: string | null; recipient?: string | null; mood?: string | null }
+  filters: { type?: string | null; recipient?: string | null; gender?: string | null }
 ): Prize[] {
   return items.filter((item) => {
     const matchesType = !filters.type || item.type === filters.type;
     const matchesRecipient = !filters.recipient || item.recipients?.includes(filters.recipient);
-    const matchesMood = !filters.mood || item.moods?.includes(filters.mood);
-    return matchesType && matchesRecipient && matchesMood;
+    const matchesGender =
+      !filters.gender ||
+      item.gender === filters.gender ||
+      item.gender === GENDER_UNRESTRICTED_TAG;
+    return matchesType && matchesRecipient && matchesGender;
   });
 }

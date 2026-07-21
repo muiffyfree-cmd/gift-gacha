@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import ResultScreen from "@/components/ResultScreen";
 import Breadcrumb from "@/components/Breadcrumb";
 import { fetchItemById } from "@/lib/items";
-import { getPriceBandForPrice } from "@/lib/priceBands";
 import { RARITY_LABELS } from "@/lib/rarity";
 
 export async function generateMetadata({
@@ -32,7 +32,6 @@ export default async function ResultByIdPage({
 }) {
   const { id } = await params;
   const prize = await fetchItemById(id).catch(() => null);
-  const priceBand = prize?.price !== undefined ? getPriceBandForPrice(prize.price) : null;
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50">
@@ -40,14 +39,14 @@ export default async function ResultByIdPage({
         <Breadcrumb
           items={[
             { label: "ホーム", href: "/" },
-            ...(priceBand
-              ? [{ label: priceBand.label, href: `/price/${priceBand.slug}` }]
-              : [{ label: "価格帯から探す", href: "/price" }]),
+            { label: "性別から探す", href: "/price" },
             { label: prize.name },
           ]}
         />
       )}
-      <ResultScreen initialPrize={prize} />
+      <Suspense>
+        <ResultScreen initialPrize={prize} />
+      </Suspense>
     </div>
   );
 }
