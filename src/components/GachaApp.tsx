@@ -249,7 +249,7 @@ export default function GachaApp() {
 
       <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-10">
         <header className="text-center">
-          <h1 className="text-xl font-bold text-gray-800">誕生日プレゼントガチャ</h1>
+          <h2 className="text-xl font-bold text-gray-800">誕生日プレゼントガチャ</h2>
           <p className="mt-2 text-sm text-gray-500">
             つまみを押してガチャを回そう！
           </p>

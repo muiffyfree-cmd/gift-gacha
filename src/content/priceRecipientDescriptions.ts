@@ -80,6 +80,43 @@ const HAND_WRITTEN_DESCRIPTIONS: Record<string, Record<string, string>> = {
   },
 };
 
+/**
+ * title/h1で使う「対象の呼び方」（例: 女性×大学生 → 女子大生）。
+ * HAND_WRITTEN_TITLES と同じキー形式（相手の名前 → 性別の名前）。
+ */
+const RECIPIENT_LABELS: Record<string, Record<string, string>> = {
+  "大学生": {
+    "女性": "女子大生",
+    "男性": "男子大学生",
+    [GENDER_UNRESTRICTED_TAG]: "大学生",
+  },
+  "高校生": {
+    "女性": "女子高生",
+    "男性": "男子高校生",
+    [GENDER_UNRESTRICTED_TAG]: "高校生",
+  },
+  "社会人": {
+    "女性": "社会人女性",
+    "男性": "社会人男性",
+    [GENDER_UNRESTRICTED_TAG]: "社会人",
+  },
+  "家族": {
+    "女性": "お母さん・姉妹",
+    "男性": "お父さん・兄弟",
+    [GENDER_UNRESTRICTED_TAG]: "家族",
+  },
+  "恋人": {
+    "女性": "彼女",
+    "男性": "彼氏",
+    [GENDER_UNRESTRICTED_TAG]: "恋人",
+  },
+};
+
+export function getRecipientLabel(gender: string, recipient: string): string | undefined {
+  if (!gender || !recipient) return undefined;
+  return RECIPIENT_LABELS[recipient]?.[gender];
+}
+
 export function getPriceRecipientTitle(gender: string, recipient: string): string | undefined {
   if (!gender || !recipient) return undefined;
   return HAND_WRITTEN_TITLES[recipient]?.[gender];

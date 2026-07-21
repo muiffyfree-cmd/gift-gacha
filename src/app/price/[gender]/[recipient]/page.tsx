@@ -9,7 +9,11 @@ import AdBanner from "@/components/AdBanner";
 import { SITE_URL } from "@/lib/site";
 import { filterItems, GENDER_UNRESTRICTED_TAG } from "@/lib/searchFilters";
 import { getPriceRecipientIntro } from "@/content/priceRecipientIntros";
-import { getPriceRecipientDescription, getPriceRecipientTitle } from "@/content/priceRecipientDescriptions";
+import {
+  getPriceRecipientDescription,
+  getPriceRecipientTitle,
+  getRecipientLabel,
+} from "@/content/priceRecipientDescriptions";
 
 const TYPE_INTRO_TEXT = `プレゼントの「種類」は、渡すシチュエーションに大きく影響するんだ。それぞれどんな相手やシーンにおすすめかまとめたから、選ぶときの参考にしてみてね。
 食べ物
@@ -62,8 +66,10 @@ export default async function PriceRecipientResultPage({
   const otherRecipients = allRecipients.filter((r) => r.name !== recipientName);
   const introText = getPriceRecipientIntro(genderName, recipientName);
 
-  const h1 =
-    genderName === GENDER_UNRESTRICTED_TAG
+  const targetLabel = getRecipientLabel(genderName, recipientName);
+  const h1 = targetLabel
+    ? `${targetLabel}におすすめの誕生日プレゼント`
+    : genderName === GENDER_UNRESTRICTED_TAG
       ? `${recipientLabel}への誕生日プレゼントのおすすめ`
       : `${recipientLabel}への誕生日プレゼント｜${genderLabel}向けのおすすめ`;
 
